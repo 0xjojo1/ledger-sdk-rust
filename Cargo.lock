@@ -3,5 +3,20 @@
 version = 4
 
 [[package]]
-name = "ledger-sdk-rust"
+name = "apdu"
 version = "0.1.0"
+
+[[package]]
+name = "eth-app"
+version = "0.1.0"
+dependencies = [
+ "apdu",
+ "transport",
+]
+
+[[package]]
+name = "transport"
+version = "0.1.0"
+dependencies = [
+ "apdu",
+]

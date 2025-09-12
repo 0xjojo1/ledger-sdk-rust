@@ -1,0 +1,13 @@
+[package]
+name = "ledger-apdu"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+std = ["snafu/std", "no-std-compat/std"]
+default = ["std"]
+
+[dependencies]
+arrayref = "0.3"
+no-std-compat = "0.4"
+snafu = { version = "0.8", default-features = false }

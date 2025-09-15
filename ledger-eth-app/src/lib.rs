@@ -124,6 +124,82 @@ where
     }
 }
 
+#[async_trait]
+impl<E> SignEip712V0<E> for EthereumApp<E>
+where
+    E: Exchange + Send + Sync,
+    E::Error: std::error::Error,
+{
+    async fn sign_eip712_v0(
+        transport: &E,
+        params: SignEip712Params,
+    ) -> EthAppResult<Signature, E::Error> {
+        EthApp::sign_eip712_v0(transport, params).await
+    }
+}
+
+#[async_trait]
+impl<E> SignEip712Full<E> for EthereumApp<E>
+where
+    E: Exchange + Send + Sync,
+    E::Error: std::error::Error,
+{
+    async fn sign_eip712_full(transport: &E, path: &BipPath) -> EthAppResult<Signature, E::Error> {
+        EthApp::sign_eip712_full(transport, path).await
+    }
+}
+
+#[async_trait]
+impl<E> Eip712StructDef<E> for EthereumApp<E>
+where
+    E: Exchange + Send + Sync,
+    E::Error: std::error::Error,
+{
+    async fn send_struct_definition(
+        transport: &E,
+        struct_def: &Eip712StructDefinition,
+    ) -> EthAppResult<(), E::Error> {
+        EthApp::send_struct_definition(transport, struct_def).await
+    }
+}
+
+#[async_trait]
+impl<E> Eip712StructImpl<E> for EthereumApp<E>
+where
+    E: Exchange + Send + Sync,
+    E::Error: std::error::Error,
+{
+    async fn send_struct_implementation(
+        transport: &E,
+        struct_impl: &Eip712StructImplementation,
+        complete: bool,
+    ) -> EthAppResult<(), E::Error> {
+        EthApp::send_struct_implementation(transport, struct_impl, complete).await
+    }
+
+    async fn set_array_size(transport: &E, size: u8) -> EthAppResult<(), E::Error> {
+        EthApp::set_array_size(transport, size).await
+    }
+}
+
+#[async_trait]
+impl<E> Eip712Filtering<E> for EthereumApp<E>
+where
+    E: Exchange + Send + Sync,
+    E::Error: std::error::Error,
+{
+    async fn send_filter_config(
+        transport: &E,
+        filter_params: &Eip712FilterParams,
+    ) -> EthAppResult<(), E::Error> {
+        EthApp::send_filter_config(transport, filter_params).await
+    }
+
+    async fn activate_filtering(transport: &E) -> EthAppResult<(), E::Error> {
+        EthApp::activate_filtering(transport).await
+    }
+}
+
 impl<E> EthereumApp<E>
 where
     E: Exchange + Send + Sync,
@@ -209,5 +285,109 @@ where
         mode: commands::sign_transaction::TransactionMode,
     ) -> EthAppResult<Option<Signature>, E::Error> {
         EthApp::sign_transaction_with_mode(&self.transport, params, mode).await
+    }
+
+    /// Sign an EIP-712 message using v0 implementation (domain hash + message hash)
+    ///
+    /// This is the simpler EIP-712 signing mode where domain and message hashes
+    /// are computed externally and provided directly to the device.
+    ///
+    /// # Arguments
+    ///
+    /// * `params` - Parameters including BIP32 path, domain hash, and message hash
+    ///
+    ///
+    pub async fn sign_eip712_v0(
+        &self,
+        params: SignEip712Params,
+    ) -> EthAppResult<Signature, E::Error> {
+        EthApp::sign_eip712_v0(&self.transport, params).await
+    }
+
+    /// Sign an EIP-712 message using full implementation
+    ///
+    /// This mode requires sending struct definitions and implementations before
+    /// calling this final signing method. Use the struct definition and
+    /// implementation methods first to set up the EIP-712 data.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - BIP32 derivation path for the signing key
+    ///
+    ///
+    pub async fn sign_eip712_full(&self, path: &BipPath) -> EthAppResult<Signature, E::Error> {
+        EthApp::sign_eip712_full(&self.transport, path).await
+    }
+
+    /// Send EIP-712 struct definition to the device
+    ///
+    /// This method sends type definitions for EIP-712 structures. Must be called
+    /// before sending struct implementations in full EIP-712 mode.
+    ///
+    /// # Arguments
+    ///
+    /// * `struct_def` - The struct definition including name and field types
+    ///
+    ///
+    pub async fn send_struct_definition(
+        &self,
+        struct_def: &Eip712StructDefinition,
+    ) -> EthAppResult<(), E::Error> {
+        EthApp::send_struct_definition(&self.transport, struct_def).await
+    }
+
+    /// Send EIP-712 struct implementation to the device
+    ///
+    /// This method sends the actual data values for EIP-712 structures.
+    /// Must be called after sending struct definitions.
+    ///
+    /// # Arguments
+    ///
+    /// * `struct_impl` - The struct implementation with field values
+    /// * `complete` - Whether this is a complete send or partial
+    ///
+    ///
+    pub async fn send_struct_implementation(
+        &self,
+        struct_impl: &Eip712StructImplementation,
+        complete: bool,
+    ) -> EthAppResult<(), E::Error> {
+        EthApp::send_struct_implementation(&self.transport, struct_impl, complete).await
+    }
+
+    /// Set array size for upcoming array fields in EIP-712 implementation
+    ///
+    /// # Arguments
+    ///
+    /// * `size` - The size of the array
+    ///
+    ///
+    pub async fn set_array_size(&self, size: u8) -> EthAppResult<(), E::Error> {
+        EthApp::set_array_size(&self.transport, size).await
+    }
+
+    /// Send EIP-712 filtering configuration
+    ///
+    /// Configure how EIP-712 data should be filtered and displayed on the device.
+    ///
+    /// # Arguments
+    ///
+    /// * `filter_params` - Filtering parameters and configuration
+    ///
+    ///
+    pub async fn send_filter_config(
+        &self,
+        filter_params: &Eip712FilterParams,
+    ) -> EthAppResult<(), E::Error> {
+        EthApp::send_filter_config(&self.transport, filter_params).await
+    }
+
+    /// Activate EIP-712 filtering on the device
+    ///
+    /// Must be called to enable filtering before sending struct definitions.
+    ///
+    ///
+    pub async fn activate_filtering(&self) -> EthAppResult<(), E::Error> {
+        EthApp::activate_filtering(&self.transport).await
     }
 }

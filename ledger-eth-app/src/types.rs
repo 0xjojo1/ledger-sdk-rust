@@ -291,3 +291,290 @@ impl SignMessageParams {
         SignMessageParams { path, message }
     }
 }
+
+/// EIP-712 implementation mode
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Eip712Mode {
+    /// v0 implementation: provides domain hash and message hash directly
+    V0Implementation,
+    /// Full implementation: uses JSON data and performs hashing on device
+    FullImplementation,
+}
+
+/// Parameters for SIGN ETH EIP 712 command (v0 mode)
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SignEip712Params {
+    /// BIP32 derivation path
+    pub path: BipPath,
+    /// Domain hash (32 bytes)
+    pub domain_hash: [u8; 32],
+    /// Message hash (32 bytes)
+    pub message_hash: [u8; 32],
+}
+
+impl SignEip712Params {
+    /// Create new parameters for EIP-712 v0 signing
+    pub fn new(path: BipPath, domain_hash: [u8; 32], message_hash: [u8; 32]) -> Self {
+        SignEip712Params {
+            path,
+            domain_hash,
+            message_hash,
+        }
+    }
+}
+
+/// EIP-712 field type enumeration
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Eip712FieldType {
+    /// Custom struct type
+    Custom(String),
+    /// Integer type with size in bytes
+    Int(u8),
+    /// Unsigned integer type with size in bytes
+    Uint(u8),
+    /// Ethereum address type
+    Address,
+    /// Boolean type
+    Bool,
+    /// String type
+    String,
+    /// Fixed-size bytes with size
+    FixedBytes(u8),
+    /// Dynamic-size bytes
+    DynamicBytes,
+}
+
+impl Eip712FieldType {
+    /// Get the type ID for encoding
+    pub fn type_id(&self) -> u8 {
+        match self {
+            Eip712FieldType::Custom(_) => 0,
+            Eip712FieldType::Int(_) => 1,
+            Eip712FieldType::Uint(_) => 2,
+            Eip712FieldType::Address => 3,
+            Eip712FieldType::Bool => 4,
+            Eip712FieldType::String => 5,
+            Eip712FieldType::FixedBytes(_) => 6,
+            Eip712FieldType::DynamicBytes => 7,
+        }
+    }
+
+    /// Get the type size if applicable
+    pub fn type_size(&self) -> Option<u8> {
+        match self {
+            Eip712FieldType::Int(size) => Some(*size),
+            Eip712FieldType::Uint(size) => Some(*size),
+            Eip712FieldType::FixedBytes(size) => Some(*size),
+            _ => None,
+        }
+    }
+
+    /// Get the type name for custom types
+    pub fn type_name(&self) -> Option<&str> {
+        match self {
+            Eip712FieldType::Custom(name) => Some(name),
+            _ => None,
+        }
+    }
+}
+
+/// EIP-712 array level type
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Eip712ArrayLevel {
+    /// Dynamic array (type[])
+    Dynamic,
+    /// Fixed-size array (type[N])
+    Fixed(u8),
+}
+
+impl Eip712ArrayLevel {
+    /// Get the array level type ID for encoding
+    pub fn type_id(&self) -> u8 {
+        match self {
+            Eip712ArrayLevel::Dynamic => 0,
+            Eip712ArrayLevel::Fixed(_) => 1,
+        }
+    }
+
+    /// Get the array size if fixed
+    pub fn size(&self) -> Option<u8> {
+        match self {
+            Eip712ArrayLevel::Fixed(size) => Some(*size),
+            Eip712ArrayLevel::Dynamic => None,
+        }
+    }
+}
+
+/// EIP-712 struct field definition
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Eip712FieldDefinition {
+    /// Field data type
+    pub field_type: Eip712FieldType,
+    /// Field name
+    pub name: String,
+    /// Array levels (empty if not an array)
+    pub array_levels: Vec<Eip712ArrayLevel>,
+}
+
+impl Eip712FieldDefinition {
+    /// Create a new field definition
+    pub fn new(field_type: Eip712FieldType, name: String) -> Self {
+        Eip712FieldDefinition {
+            field_type,
+            name,
+            array_levels: Vec::new(),
+        }
+    }
+
+    /// Add an array level to the field
+    pub fn with_array_level(mut self, level: Eip712ArrayLevel) -> Self {
+        self.array_levels.push(level);
+        self
+    }
+
+    /// Check if this field is an array
+    pub fn is_array(&self) -> bool {
+        !self.array_levels.is_empty()
+    }
+}
+
+/// EIP-712 struct definition
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Eip712StructDefinition {
+    /// Struct name
+    pub name: String,
+    /// Struct fields
+    pub fields: Vec<Eip712FieldDefinition>,
+}
+
+impl Eip712StructDefinition {
+    /// Create a new struct definition
+    pub fn new(name: String) -> Self {
+        Eip712StructDefinition {
+            name,
+            fields: Vec::new(),
+        }
+    }
+
+    /// Add a field to the struct
+    pub fn with_field(mut self, field: Eip712FieldDefinition) -> Self {
+        self.fields.push(field);
+        self
+    }
+}
+
+/// EIP-712 struct implementation value
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Eip712FieldValue {
+    /// Raw value data
+    pub value: Vec<u8>,
+}
+
+impl Eip712FieldValue {
+    /// Create a new field value
+    pub fn new(value: Vec<u8>) -> Self {
+        Eip712FieldValue { value }
+    }
+
+    /// Create from a string value
+    pub fn from_string(s: &str) -> Self {
+        Eip712FieldValue {
+            value: s.as_bytes().to_vec(),
+        }
+    }
+
+    /// Create from a u256 value
+    pub fn from_u256(value: &[u8; 32]) -> Self {
+        Eip712FieldValue {
+            value: value.to_vec(),
+        }
+    }
+
+    /// Create from an address
+    pub fn from_address(address: &[u8; 20]) -> Self {
+        Eip712FieldValue {
+            value: address.to_vec(),
+        }
+    }
+
+    /// Create from a boolean
+    pub fn from_bool(value: bool) -> Self {
+        Eip712FieldValue {
+            value: vec![if value { 1 } else { 0 }],
+        }
+    }
+}
+
+/// EIP-712 struct implementation
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Eip712StructImplementation {
+    /// Struct name
+    pub name: String,
+    /// Field values in order
+    pub values: Vec<Eip712FieldValue>,
+}
+
+impl Eip712StructImplementation {
+    /// Create a new struct implementation
+    pub fn new(name: String) -> Self {
+        Eip712StructImplementation {
+            name,
+            values: Vec::new(),
+        }
+    }
+
+    /// Add a field value
+    pub fn with_value(mut self, value: Eip712FieldValue) -> Self {
+        self.values.push(value);
+        self
+    }
+}
+
+/// EIP-712 filtering operation type
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Eip712FilterType {
+    /// Activation
+    Activation,
+    /// Discarded filter path
+    DiscardedFilterPath(String),
+    /// Message info
+    MessageInfo {
+        display_name: String,
+        filters_count: u8,
+        signature: Vec<u8>,
+    },
+    /// Trusted name
+    TrustedName {
+        display_name: String,
+        name_types: Vec<u8>,
+        name_sources: Vec<u8>,
+        signature: Vec<u8>,
+    },
+    /// Date/time
+    DateTime {
+        display_name: String,
+        signature: Vec<u8>,
+    },
+    /// Amount-join token
+    AmountJoinToken { token_index: u8, signature: Vec<u8> },
+    /// Amount-join value
+    AmountJoinValue {
+        display_name: String,
+        token_index: u8,
+        signature: Vec<u8>,
+    },
+    /// Raw field
+    RawField {
+        display_name: String,
+        signature: Vec<u8>,
+    },
+}
+
+/// Parameters for EIP-712 filtering operations
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Eip712FilterParams {
+    /// Filter operation type
+    pub filter_type: Eip712FilterType,
+    /// Whether this filter is discarded
+    pub discarded: bool,
+}

@@ -139,6 +139,8 @@ pub fn chunk_data(data: &[u8], chunk_size: usize) -> Vec<Vec<u8>> {
 
 /// Validate Ethereum address format
 pub fn validate_ethereum_address<E: std::error::Error>(address: &str) -> EthAppResult<(), E> {
+    println!("validate_ethereum_address: {}", address);
+
     if !address.starts_with("0x") {
         return Err(EthAppError::InvalidAddress(
             "Address must start with 0x".to_string(),
@@ -205,12 +207,17 @@ pub fn parse_device_address<E: std::error::Error>(
     }
 
     let address_bytes = &data[address_start..address_end];
-    let address_str = std::str::from_utf8(address_bytes)
-        .map_err(|_| EthAppError::InvalidResponseData("Invalid UTF-8 in address".to_string()))?;
+    let mut address_str = std::str::from_utf8(address_bytes)
+        .map_err(|_| EthAppError::InvalidResponseData("Invalid UTF-8 in address".to_string()))?
+        .to_string();
 
-    validate_ethereum_address(address_str)?;
-    let address =
-        EthAddress::new(address_str.to_string()).map_err(|e| EthAppError::InvalidAddress(e))?;
+    // If address is 40 characters and doesn't start with 0x, add 0x prefix
+    if address_str.len() == 40 && !address_str.starts_with("0x") {
+        address_str = format!("0x{}", address_str);
+    }
+
+    validate_ethereum_address(&address_str)?;
+    let address = EthAddress::new(address_str).map_err(|e| EthAppError::InvalidAddress(e))?;
 
     Ok((address, address_end))
 }
@@ -308,6 +315,46 @@ mod tests {
             "0x742d35Cc6535C244B8c80A79d5d22efeAdBA5B9X"
         )
         .is_err());
+    }
+
+    #[test]
+    fn test_parse_device_address_with_40_char_address() {
+        // Test with 40-character address (without 0x prefix)
+        let mut response_data = Vec::new();
+
+        // Address length (40 characters)
+        response_data.push(40);
+        response_data.extend(b"742d35Cc6535C244B8c80A79d5d22efeAdBA5B90");
+
+        let result = parse_device_address::<std::io::Error>(&response_data, 0);
+        assert!(result.is_ok());
+
+        let (address, offset) = result.unwrap();
+        assert_eq!(
+            address.address,
+            "0x742d35Cc6535C244B8c80A79d5d22efeAdBA5B90"
+        );
+        assert_eq!(offset, 41); // 1 (length) + 40 (address) = 41
+    }
+
+    #[test]
+    fn test_parse_device_address_with_42_char_address() {
+        // Test with 42-character address (with 0x prefix) - existing behavior
+        let mut response_data = Vec::new();
+
+        // Address length (42 characters)
+        response_data.push(42);
+        response_data.extend(b"0x742d35Cc6535C244B8c80A79d5d22efeAdBA5B90");
+
+        let result = parse_device_address::<std::io::Error>(&response_data, 0);
+        assert!(result.is_ok());
+
+        let (address, offset) = result.unwrap();
+        assert_eq!(
+            address.address,
+            "0x742d35Cc6535C244B8c80A79d5d22efeAdBA5B90"
+        );
+        assert_eq!(offset, 43); // 1 (length) + 42 (address) = 43
     }
 
     #[test]

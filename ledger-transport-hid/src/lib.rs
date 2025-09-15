@@ -11,6 +11,7 @@ use log::info;
 
 pub const LEDGER_VENDOR_ID: u16 = 0x2c97;
 pub const LEDGER_CHANNEL: u16 = 0x0101;
+pub const LEDGER_USAGE_PAGE: u16 = 0xffa0;
 // for Windows compatability, we prepend the buffer with a 0x00
 // so the actual buffer is 64 bytes
 pub const LEDGER_PACKET_WRITE_SIZE: u8 = 65;
@@ -38,8 +39,7 @@ pub struct TransportNativeHID {
 
 impl TransportNativeHID {
     fn is_ledger(dev: &DeviceInfo) -> bool {
-        const PIDS: &[u16] = &[pid::NANO_S_PLUS, pid::NANO_X, pid::STAX, pid::FLEX];
-        dev.vendor_id() == LEDGER_VENDOR_ID && PIDS.contains(&dev.product_id())
+        dev.vendor_id() == LEDGER_VENDOR_ID && dev.usage_page() == LEDGER_USAGE_PAGE
     }
 
     pub fn list_ledgers(api: &HidApi) -> impl Iterator<Item = &DeviceInfo> {

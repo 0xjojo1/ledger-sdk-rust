@@ -114,6 +114,76 @@ pub mod p1_get_eth2_key {
     pub const DISPLAY_AND_CONFIRM: u8 = 0x01;
 }
 
+/// P1 parameter constants for SIGN ETH EIP 712
+pub mod p1_sign_eip712 {
+    /// First chunk
+    pub const FIRST_CHUNK: u8 = 0x00;
+    /// Following chunk
+    pub const FOLLOWING_CHUNK: u8 = 0x01;
+}
+
+/// P2 parameter constants for SIGN ETH EIP 712
+pub mod p2_sign_eip712 {
+    /// v0 implementation (domain hash + message hash)
+    pub const V0_IMPLEMENTATION: u8 = 0x00;
+    /// Full implementation (complete JSON processing)
+    pub const FULL_IMPLEMENTATION: u8 = 0x01;
+}
+
+/// P2 parameter constants for EIP712 SEND STRUCT DEFINITION
+pub mod p2_eip712_struct_def {
+    /// Struct name
+    pub const STRUCT_NAME: u8 = 0x00;
+    /// Struct field
+    pub const STRUCT_FIELD: u8 = 0xFF;
+}
+
+/// P1 parameter constants for EIP712 SEND STRUCT IMPLEMENTATION
+pub mod p1_eip712_struct_impl {
+    /// Complete send
+    pub const COMPLETE_SEND: u8 = 0x00;
+    /// Partial send, more to come
+    pub const PARTIAL_SEND: u8 = 0x01;
+}
+
+/// P2 parameter constants for EIP712 SEND STRUCT IMPLEMENTATION
+pub mod p2_eip712_struct_impl {
+    /// Root struct
+    pub const ROOT_STRUCT: u8 = 0x00;
+    /// Array
+    pub const ARRAY: u8 = 0x0F;
+    /// Struct field
+    pub const STRUCT_FIELD: u8 = 0xFF;
+}
+
+/// P1 parameter constants for EIP712 FILTERING
+pub mod p1_eip712_filtering {
+    /// Standard
+    pub const STANDARD: u8 = 0x00;
+    /// Discarded
+    pub const DISCARDED: u8 = 0x01;
+}
+
+/// P2 parameter constants for EIP712 FILTERING
+pub mod p2_eip712_filtering {
+    /// Activation
+    pub const ACTIVATION: u8 = 0x00;
+    /// Discarded filter path
+    pub const DISCARDED_FILTER_PATH: u8 = 0x01;
+    /// Message info
+    pub const MESSAGE_INFO: u8 = 0x0F;
+    /// Trusted name
+    pub const TRUSTED_NAME: u8 = 0xFB;
+    /// Date/time
+    pub const DATE_TIME: u8 = 0xFC;
+    /// Amount-join token
+    pub const AMOUNT_JOIN_TOKEN: u8 = 0xFD;
+    /// Amount-join value
+    pub const AMOUNT_JOIN_VALUE: u8 = 0xFE;
+    /// Raw field
+    pub const RAW_FIELD: u8 = 0xFF;
+}
+
 /// Data length constants
 pub mod length {
     /// Maximum BIP 32 derivation path depth
@@ -132,6 +202,10 @@ pub mod length {
     pub const SIGNATURE_V_SIZE: usize = 1;
     /// Maximum message chunk size for chunked operations
     pub const MAX_MESSAGE_CHUNK_SIZE: usize = 255;
+    /// Size of EIP-712 domain hash
+    pub const EIP712_DOMAIN_HASH_SIZE: usize = 32;
+    /// Size of EIP-712 message hash
+    pub const EIP712_MESSAGE_HASH_SIZE: usize = 32;
 }
 
 /// App configuration flags

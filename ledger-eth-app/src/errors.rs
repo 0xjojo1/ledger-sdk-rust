@@ -67,6 +67,18 @@ pub enum EthAppError<E: std::error::Error> {
     /// Invalid response data from device
     #[error("Invalid response data: {0}")]
     InvalidResponseData(String),
+
+    /// Invalid EIP-712 data
+    #[error("Invalid EIP-712 data: {0}")]
+    InvalidEip712Data(String),
+
+    /// EIP-712 struct definition error
+    #[error("EIP-712 struct error: {0}")]
+    Eip712StructError(String),
+
+    /// EIP-712 filtering error
+    #[error("EIP-712 filter error: {0}")]
+    Eip712FilterError(String),
 }
 
 impl<E: std::error::Error> EthAppError<E> {

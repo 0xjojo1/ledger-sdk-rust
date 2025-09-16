@@ -292,15 +292,29 @@ where
     /// This is the simpler EIP-712 signing mode where domain and message hashes
     /// are computed externally and provided directly to the device.
     ///
+    /// **Version Requirements**: Requires app version >= 1.5.0
+    ///
     /// # Arguments
     ///
     /// * `params` - Parameters including BIP32 path, domain hash, and message hash
     ///
+    /// # Errors
+    ///
+    /// Returns `EthAppError::UnsupportedVersion` if app version is below 1.5.0
     ///
     pub async fn sign_eip712_v0(
         &self,
         params: SignEip712Params,
     ) -> EthAppResult<Signature, E::Error> {
+        // Check version requirement for EIP-712 v0 (>= 1.5.0)
+        let config = self.get_configuration().await?;
+        if !config.version.supports_eip712_v0() {
+            return Err(EthAppError::UnsupportedVersion(format!(
+                "EIP-712 v0 requires app version >= 1.5.0, found {}",
+                config.version
+            )));
+        }
+
         EthApp::sign_eip712_v0(&self.transport, params).await
     }
 
@@ -310,12 +324,26 @@ where
     /// calling this final signing method. Use the struct definition and
     /// implementation methods first to set up the EIP-712 data.
     ///
+    /// **Version Requirements**: Requires app version >= 1.9.19
+    ///
     /// # Arguments
     ///
     /// * `path` - BIP32 derivation path for the signing key
     ///
+    /// # Errors
+    ///
+    /// Returns `EthAppError::UnsupportedVersion` if app version is below 1.9.19
     ///
     pub async fn sign_eip712_full(&self, path: &BipPath) -> EthAppResult<Signature, E::Error> {
+        // Check version requirement for EIP-712 full (>= 1.9.19)
+        let config = self.get_configuration().await?;
+        if !config.version.supports_eip712_full() {
+            return Err(EthAppError::UnsupportedVersion(format!(
+                "EIP-712 full implementation requires app version >= 1.9.19, found {}",
+                config.version
+            )));
+        }
+
         EthApp::sign_eip712_full(&self.transport, path).await
     }
 
@@ -324,15 +352,29 @@ where
     /// This method sends type definitions for EIP-712 structures. Must be called
     /// before sending struct implementations in full EIP-712 mode.
     ///
+    /// **Version Requirements**: Requires app version >= 1.9.19
+    ///
     /// # Arguments
     ///
     /// * `struct_def` - The struct definition including name and field types
     ///
+    /// # Errors
+    ///
+    /// Returns `EthAppError::UnsupportedVersion` if app version is below 1.9.19
     ///
     pub async fn send_struct_definition(
         &self,
         struct_def: &Eip712StructDefinition,
     ) -> EthAppResult<(), E::Error> {
+        // Check version requirement for EIP-712 full implementation
+        let config = self.get_configuration().await?;
+        if !config.version.supports_eip712_full() {
+            return Err(EthAppError::UnsupportedVersion(format!(
+                "EIP-712 struct definitions require app version >= 1.9.19, found {}",
+                config.version
+            )));
+        }
+
         EthApp::send_struct_definition(&self.transport, struct_def).await
     }
 
@@ -341,28 +383,56 @@ where
     /// This method sends the actual data values for EIP-712 structures.
     /// Must be called after sending struct definitions.
     ///
+    /// **Version Requirements**: Requires app version >= 1.9.19
+    ///
     /// # Arguments
     ///
     /// * `struct_impl` - The struct implementation with field values
     /// * `complete` - Whether this is a complete send or partial
     ///
+    /// # Errors
+    ///
+    /// Returns `EthAppError::UnsupportedVersion` if app version is below 1.9.19
     ///
     pub async fn send_struct_implementation(
         &self,
         struct_impl: &Eip712StructImplementation,
         complete: bool,
     ) -> EthAppResult<(), E::Error> {
+        // Check version requirement for EIP-712 full implementation
+        let config = self.get_configuration().await?;
+        if !config.version.supports_eip712_full() {
+            return Err(EthAppError::UnsupportedVersion(format!(
+                "EIP-712 struct implementations require app version >= 1.9.19, found {}",
+                config.version
+            )));
+        }
+
         EthApp::send_struct_implementation(&self.transport, struct_impl, complete).await
     }
 
     /// Set array size for upcoming array fields in EIP-712 implementation
     ///
+    /// **Version Requirements**: Requires app version >= 1.9.19
+    ///
     /// # Arguments
     ///
     /// * `size` - The size of the array
     ///
+    /// # Errors
+    ///
+    /// Returns `EthAppError::UnsupportedVersion` if app version is below 1.9.19
     ///
     pub async fn set_array_size(&self, size: u8) -> EthAppResult<(), E::Error> {
+        // Check version requirement for EIP-712 full implementation
+        let config = self.get_configuration().await?;
+        if !config.version.supports_eip712_full() {
+            return Err(EthAppError::UnsupportedVersion(format!(
+                "EIP-712 array operations require app version >= 1.9.19, found {}",
+                config.version
+            )));
+        }
+
         EthApp::set_array_size(&self.transport, size).await
     }
 
@@ -370,15 +440,29 @@ where
     ///
     /// Configure how EIP-712 data should be filtered and displayed on the device.
     ///
+    /// **Version Requirements**: Requires app version >= 1.9.19
+    ///
     /// # Arguments
     ///
     /// * `filter_params` - Filtering parameters and configuration
     ///
+    /// # Errors
+    ///
+    /// Returns `EthAppError::UnsupportedVersion` if app version is below 1.9.19
     ///
     pub async fn send_filter_config(
         &self,
         filter_params: &Eip712FilterParams,
     ) -> EthAppResult<(), E::Error> {
+        // Check version requirement for EIP-712 full implementation
+        let config = self.get_configuration().await?;
+        if !config.version.supports_eip712_full() {
+            return Err(EthAppError::UnsupportedVersion(format!(
+                "EIP-712 filtering requires app version >= 1.9.19, found {}",
+                config.version
+            )));
+        }
+
         EthApp::send_filter_config(&self.transport, filter_params).await
     }
 
@@ -386,8 +470,22 @@ where
     ///
     /// Must be called to enable filtering before sending struct definitions.
     ///
+    /// **Version Requirements**: Requires app version >= 1.9.19
+    ///
+    /// # Errors
+    ///
+    /// Returns `EthAppError::UnsupportedVersion` if app version is below 1.9.19
     ///
     pub async fn activate_filtering(&self) -> EthAppResult<(), E::Error> {
+        // Check version requirement for EIP-712 full implementation
+        let config = self.get_configuration().await?;
+        if !config.version.supports_eip712_full() {
+            return Err(EthAppError::UnsupportedVersion(format!(
+                "EIP-712 filtering requires app version >= 1.9.19, found {}",
+                config.version
+            )));
+        }
+
         EthApp::activate_filtering(&self.transport).await
     }
 }

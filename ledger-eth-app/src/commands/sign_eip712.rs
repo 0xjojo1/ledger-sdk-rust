@@ -192,6 +192,8 @@ where
                 data: field_data,
             };
 
+            println!("field_command: {:?}", field_command);
+
             let response = transport
                 .exchange(&field_command)
                 .await
@@ -216,7 +218,7 @@ where
         struct_impl: &Eip712StructImplementation,
         complete: bool,
     ) -> EthAppResult<(), E::Error> {
-        // Send root struct name first
+        // Send struct name as ROOT type first
         let struct_name_command = APDUCommand {
             cla: Self::CLA,
             ins: ins::EIP712_SEND_STRUCT_IMPLEMENTATION,
@@ -237,8 +239,9 @@ where
         <EthApp as AppExt<E>>::handle_response_error(&response)
             .map_err(|e| EthAppError::Transport(e))?;
 
-        // Send each field value
-        for value in &struct_impl.values {
+        // Send each field value as FIELD type
+        for (index, value) in struct_impl.values.iter().enumerate() {
+            // Encode field value with length prefix
             let mut field_data = Vec::new();
             field_data.extend_from_slice(&(value.value.len() as u16).to_be_bytes());
             field_data.extend_from_slice(&value.value);
@@ -246,7 +249,7 @@ where
             let field_command = APDUCommand {
                 cla: Self::CLA,
                 ins: ins::EIP712_SEND_STRUCT_IMPLEMENTATION,
-                p1: if complete {
+                p1: if complete && index == struct_impl.values.len() - 1 {
                     p1_eip712_struct_impl::COMPLETE_SEND
                 } else {
                     p1_eip712_struct_impl::PARTIAL_SEND

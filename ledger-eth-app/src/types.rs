@@ -214,6 +214,50 @@ impl fmt::Display for AppVersion {
     }
 }
 
+impl AppVersion {
+    /// Create a new AppVersion
+    pub fn new(major: u8, minor: u8, patch: u8) -> Self {
+        Self {
+            major,
+            minor,
+            patch,
+        }
+    }
+
+    /// Check if this version supports EIP-712 v0 implementation (>= 1.5.0)
+    pub fn supports_eip712_v0(&self) -> bool {
+        self.major > 1 || (self.major == 1 && self.minor >= 5)
+    }
+
+    /// Check if this version supports EIP-712 full implementation (>= 1.9.19)
+    pub fn supports_eip712_full(&self) -> bool {
+        self.major > 1
+            || (self.major == 1 && self.minor > 9)
+            || (self.major == 1 && self.minor == 9 && self.patch >= 19)
+    }
+
+    /// Compare with another version
+    pub fn compare(&self, other: &AppVersion) -> std::cmp::Ordering {
+        use std::cmp::Ordering;
+
+        match self.major.cmp(&other.major) {
+            Ordering::Equal => match self.minor.cmp(&other.minor) {
+                Ordering::Equal => self.patch.cmp(&other.patch),
+                other => other,
+            },
+            other => other,
+        }
+    }
+
+    /// Check if this version is greater than or equal to another version
+    pub fn is_at_least(&self, other: &AppVersion) -> bool {
+        matches!(
+            self.compare(other),
+            std::cmp::Ordering::Greater | std::cmp::Ordering::Equal
+        )
+    }
+}
+
 /// Parameters for GET ETH PUBLIC ADDRESS command
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GetAddressParams {
@@ -461,6 +505,12 @@ impl Eip712StructDefinition {
         self.fields.push(field);
         self
     }
+
+    /// Sort fields alphabetically by name (important for EIP-712 hash consistency)
+    pub fn with_sorted_fields(mut self) -> Self {
+        self.fields.sort_by(|a, b| a.name.cmp(&b.name));
+        self
+    }
 }
 
 /// EIP-712 struct implementation value
@@ -502,6 +552,51 @@ impl Eip712FieldValue {
         Eip712FieldValue {
             value: vec![if value { 1 } else { 0 }],
         }
+    }
+
+    /// Create from a uint value (defaults to 8-byte u64)
+    pub fn from_uint(value: u64) -> Self {
+        Eip712FieldValue {
+            value: value.to_be_bytes().to_vec(),
+        }
+    }
+
+    /// Create from a uint32 value (4 bytes)
+    pub fn from_uint32(value: u32) -> Self {
+        Eip712FieldValue {
+            value: value.to_be_bytes().to_vec(),
+        }
+    }
+
+    /// Create from an address string (hex format)
+    pub fn from_address_string(address: &str) -> Result<Self, String> {
+        // Remove 0x prefix if present
+        let hex_str = if address.starts_with("0x") {
+            &address[2..]
+        } else {
+            address
+        };
+
+        // Validate length
+        if hex_str.len() != 40 {
+            return Err(format!(
+                "Invalid address length: expected 40 hex characters, got {}",
+                hex_str.len()
+            ));
+        }
+
+        // Parse hex
+        let bytes = hex::decode(hex_str).map_err(|e| format!("Invalid hex: {}", e))?;
+        if bytes.len() != 20 {
+            return Err("Address must be 20 bytes".to_string());
+        }
+
+        Ok(Eip712FieldValue { value: bytes })
+    }
+
+    /// Create a reference to a nested struct (empty value for struct references)
+    pub fn from_struct() -> Self {
+        Eip712FieldValue { value: vec![] }
     }
 }
 
@@ -577,4 +672,58 @@ pub struct Eip712FilterParams {
     pub filter_type: Eip712FilterType,
     /// Whether this filter is discarded
     pub discarded: bool,
+}
+
+#[cfg(test)]
+mod version_tests {
+    use super::*;
+
+    #[test]
+    fn test_version_display() {
+        let version = AppVersion::new(1, 9, 19);
+        assert_eq!(version.to_string(), "1.9.19");
+    }
+
+    #[test]
+    fn test_eip712_v0_support() {
+        // Supported versions
+        assert!(AppVersion::new(1, 5, 0).supports_eip712_v0());
+        assert!(AppVersion::new(1, 6, 0).supports_eip712_v0());
+        assert!(AppVersion::new(2, 0, 0).supports_eip712_v0());
+        assert!(AppVersion::new(1, 9, 19).supports_eip712_v0());
+
+        // Unsupported versions
+        assert!(!AppVersion::new(1, 4, 99).supports_eip712_v0());
+        assert!(!AppVersion::new(1, 0, 0).supports_eip712_v0());
+        assert!(!AppVersion::new(0, 9, 0).supports_eip712_v0());
+    }
+
+    #[test]
+    fn test_eip712_full_support() {
+        // Supported versions
+        assert!(AppVersion::new(1, 9, 19).supports_eip712_full());
+        assert!(AppVersion::new(1, 9, 20).supports_eip712_full());
+        assert!(AppVersion::new(1, 10, 0).supports_eip712_full());
+        assert!(AppVersion::new(2, 0, 0).supports_eip712_full());
+
+        // Unsupported versions
+        assert!(!AppVersion::new(1, 9, 18).supports_eip712_full());
+        assert!(!AppVersion::new(1, 8, 99).supports_eip712_full());
+        assert!(!AppVersion::new(1, 5, 0).supports_eip712_full());
+        assert!(!AppVersion::new(0, 9, 19).supports_eip712_full());
+    }
+
+    #[test]
+    fn test_version_comparison() {
+        let v1_5_0 = AppVersion::new(1, 5, 0);
+        let v1_9_19 = AppVersion::new(1, 9, 19);
+        let v2_0_0 = AppVersion::new(2, 0, 0);
+
+        assert!(v1_9_19.is_at_least(&v1_5_0));
+        assert!(v2_0_0.is_at_least(&v1_9_19));
+        assert!(v1_5_0.is_at_least(&v1_5_0)); // Equal
+
+        assert!(!v1_5_0.is_at_least(&v1_9_19));
+        assert!(!v1_9_19.is_at_least(&v2_0_0));
+    }
 }

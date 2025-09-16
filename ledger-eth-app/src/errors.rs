@@ -79,6 +79,10 @@ pub enum EthAppError<E: std::error::Error> {
     /// EIP-712 filtering error
     #[error("EIP-712 filter error: {0}")]
     Eip712FilterError(String),
+
+    /// Unsupported app version
+    #[error("Unsupported version: {0}")]
+    UnsupportedVersion(String),
 }
 
 impl<E: std::error::Error> EthAppError<E> {

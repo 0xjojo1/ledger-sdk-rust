@@ -192,8 +192,6 @@ where
                 data: field_data,
             };
 
-            println!("field_command: {:?}", field_command);
-
             let response = transport
                 .exchange(&field_command)
                 .await
@@ -240,11 +238,31 @@ where
             .map_err(|e| EthAppError::Transport(e))?;
 
         // Send each field value as FIELD type
-        for (index, value) in struct_impl.values.iter().enumerate() {
-            // Encode field value with length prefix
-            let mut field_data = Vec::new();
-            field_data.extend_from_slice(&(value.value.len() as u16).to_be_bytes());
-            field_data.extend_from_slice(&value.value);
+        for (index, field) in struct_impl.values.iter().enumerate() {
+            let name_bytes = field.name.as_bytes();
+            if name_bytes.len() > u8::MAX as usize {
+                return Err(EthAppError::InvalidEip712Data(format!(
+                    "Field name '{}' exceeds maximum length {}",
+                    field.name,
+                    u8::MAX
+                )));
+            }
+
+            if field.value.value.len() > u16::MAX as usize {
+                return Err(EthAppError::InvalidEip712Data(format!(
+                    "Value for field '{}' exceeds maximum length {}",
+                    field.name,
+                    u16::MAX
+                )));
+            }
+
+            // Encode field name and value with length prefixes
+            let mut field_data =
+                Vec::with_capacity(1 + name_bytes.len() + 2 + field.value.value.len());
+            field_data.push(name_bytes.len() as u8);
+            field_data.extend_from_slice(name_bytes);
+            field_data.extend_from_slice(&(field.value.value.len() as u16).to_be_bytes());
+            field_data.extend_from_slice(&field.value.value);
 
             let field_command = APDUCommand {
                 cla: Self::CLA,
@@ -550,7 +568,9 @@ fn parse_signature_response<E: std::error::Error>(data: &[u8]) -> EthAppResult<S
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{BipPath, Eip712ArrayLevel, Eip712FieldType};
+    use crate::types::{
+        BipPath, Eip712ArrayLevel, Eip712FieldType, Eip712FieldValue, Eip712StructImplementation,
+    };
 
     #[test]
     fn test_sign_eip712_params() {
@@ -605,5 +625,21 @@ mod tests {
         assert_eq!(signature.s.len(), 32);
         assert!(signature.r.iter().all(|&x| x == 0xAA));
         assert!(signature.s.iter().all(|&x| x == 0xBB));
+    }
+
+    #[test]
+    fn test_struct_implementation_sorting() {
+        let implementation = Eip712StructImplementation::new("Test".to_string())
+            .with_value("beta", Eip712FieldValue::from_uint32(2))
+            .with_value("alpha", Eip712FieldValue::from_uint32(1))
+            .with_sorted_values();
+
+        let field_names: Vec<&str> = implementation
+            .values
+            .iter()
+            .map(|field| field.name.as_str())
+            .collect();
+
+        assert_eq!(field_names, vec!["alpha", "beta"]);
     }
 }

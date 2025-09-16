@@ -600,13 +600,29 @@ impl Eip712FieldValue {
     }
 }
 
+/// Field value within an EIP-712 struct implementation
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Eip712StructFieldValue {
+    /// Field name (must match the struct definition)
+    pub name: String,
+    /// Field value bytes
+    pub value: Eip712FieldValue,
+}
+
+impl Eip712StructFieldValue {
+    /// Create a new field value with its associated name
+    pub fn new(name: String, value: Eip712FieldValue) -> Self {
+        Eip712StructFieldValue { name, value }
+    }
+}
+
 /// EIP-712 struct implementation
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Eip712StructImplementation {
     /// Struct name
     pub name: String,
     /// Field values in order
-    pub values: Vec<Eip712FieldValue>,
+    pub values: Vec<Eip712StructFieldValue>,
 }
 
 impl Eip712StructImplementation {
@@ -618,9 +634,22 @@ impl Eip712StructImplementation {
         }
     }
 
-    /// Add a field value
-    pub fn with_value(mut self, value: Eip712FieldValue) -> Self {
-        self.values.push(value);
+    /// Add a field value with its name
+    pub fn with_value<S: Into<String>>(mut self, name: S, value: Eip712FieldValue) -> Self {
+        self.values
+            .push(Eip712StructFieldValue::new(name.into(), value));
+        self
+    }
+
+    /// Add an already constructed field value
+    pub fn with_field(mut self, field: Eip712StructFieldValue) -> Self {
+        self.values.push(field);
+        self
+    }
+
+    /// Sort field values alphabetically by name
+    pub fn with_sorted_values(mut self) -> Self {
+        self.values.sort_by(|a, b| a.name.cmp(&b.name));
         self
     }
 }

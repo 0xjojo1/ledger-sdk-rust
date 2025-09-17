@@ -25,6 +25,48 @@ impl BipPath {
         Ok(BipPath { indices })
     }
 
+    /// Parse BIP32 path from string format (e.g., "m/44'/60'/0'/0/0")
+    pub fn from_string(path_str: &str) -> Result<Self, String> {
+        const PADDING: u32 = 0x80000000;
+
+        if !path_str.starts_with("m/") {
+            return Err("BIP32 path must start with 'm/'".to_string());
+        }
+
+        let components: Vec<&str> = path_str[2..].split('/').collect();
+        let mut indices = Vec::new();
+
+        for component in components {
+            if component.is_empty() {
+                continue;
+            }
+
+            let (number_str, is_hardened) = if component.ends_with("'") {
+                (&component[..component.len() - 1], true)
+            } else {
+                (component, false)
+            };
+
+            let number: u32 = number_str
+                .parse()
+                .map_err(|_| format!("Invalid number in path component: {}", component))?;
+
+            let final_number = if is_hardened {
+                number + PADDING
+            } else {
+                number
+            };
+
+            indices.push(final_number);
+        }
+
+        if indices.is_empty() {
+            return Err("BIP32 path cannot be empty".to_string());
+        }
+
+        Self::new(indices)
+    }
+
     /// Create a standard Ethereum derivation path: m/44'/60'/account'/0/address_index
     pub fn ethereum_standard(account: u32, address_index: u32) -> Self {
         BipPath {
@@ -725,5 +767,61 @@ mod version_tests {
 
         assert!(!v1_5_0.is_at_least(&v1_9_19));
         assert!(!v1_9_19.is_at_least(&v2_0_0));
+    }
+}
+
+#[cfg(test)]
+mod bip_path_tests {
+    use super::*;
+
+    #[test]
+    fn test_bip_path_creation() {
+        let path = BipPath::new(vec![0x8000002C, 0x8000003C, 0x80000000, 0, 0]).unwrap();
+        assert_eq!(path.indices.len(), 5);
+        assert_eq!(path.indices[0], 0x8000002C);
+        assert_eq!(path.indices[1], 0x8000003C);
+        assert_eq!(path.indices[2], 0x80000000);
+        assert_eq!(path.indices[3], 0);
+        assert_eq!(path.indices[4], 0);
+    }
+
+    #[test]
+    fn test_bip_path_from_string() {
+        // Test standard Ethereum path
+        let path = BipPath::from_string("m/44'/60'/0'/0/0").unwrap();
+        assert_eq!(path.indices.len(), 5);
+        assert_eq!(path.indices[0], 0x8000002C); // 44'
+        assert_eq!(path.indices[1], 0x8000003C); // 60'
+        assert_eq!(path.indices[2], 0x80000000); // 0'
+        assert_eq!(path.indices[3], 0); // 0
+        assert_eq!(path.indices[4], 0); // 0
+
+        // Test with different account and address index
+        let path2 = BipPath::from_string("m/44'/60'/1'/0/5").unwrap();
+        assert_eq!(path2.indices[2], 0x80000001); // 1'
+        assert_eq!(path2.indices[4], 5); // 5
+
+        // Test non-hardened indices
+        let path3 = BipPath::from_string("m/44'/60'/0'/1/2").unwrap();
+        assert_eq!(path3.indices[3], 1); // 1 (not hardened)
+        assert_eq!(path3.indices[4], 2); // 2 (not hardened)
+    }
+
+    #[test]
+    fn test_bip_path_from_string_errors() {
+        // Test invalid format
+        assert!(BipPath::from_string("44'/60'/0'/0/0").is_err());
+        assert!(BipPath::from_string("m/44'/60'/invalid/0/0").is_err());
+        assert!(BipPath::from_string("m/").is_err()); // Empty path
+        assert!(BipPath::from_string("m").is_err()); // No slash
+    }
+
+    #[test]
+    fn test_bip_path_display() {
+        let path = BipPath::from_string("m/44'/60'/0'/0/0").unwrap();
+        assert_eq!(format!("{}", path), "m/44'/60'/0'/0/0");
+
+        let path2 = BipPath::from_string("m/44'/60'/1'/1/2").unwrap();
+        assert_eq!(format!("{}", path2), "m/44'/60'/1'/1/2");
     }
 }

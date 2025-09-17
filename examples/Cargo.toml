@@ -1,0 +1,23 @@
+[package]
+name = "ledger-examples"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "basic_test"
+path = "basic_test.rs"
+
+[[bin]]
+name = "eip712_test"
+path = "eip712_test.rs"
+
+[dependencies]
+tokio = { version = "1.0", features = ["full"] }
+env_logger = "0.11"
+hex = "0.4"
+
+# Local dependencies
+ledger-transport = { path = "../ledger-transport" }
+ledger-transport-hid = { path = "../ledger-transport-hid" }
+ledger-eth-app = { path = "../ledger-eth-app" }
+ledger-apdu = { path = "../ledger-apdu" }

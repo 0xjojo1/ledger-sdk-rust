@@ -603,10 +603,19 @@ impl Eip712FieldValue {
         }
     }
 
-    /// Create from a uint32 value (4 bytes)
+    /// Create from a uint32 value (minimal bytes representation)
     pub fn from_uint32(value: u32) -> Self {
-        Eip712FieldValue {
-            value: value.to_be_bytes().to_vec(),
+        // 使用最小字节表示，与原始APDU保持一致
+        if value == 0 {
+            Eip712FieldValue { value: vec![0] }
+        } else if value <= 0xFF {
+            Eip712FieldValue { value: vec![value as u8] }
+        } else if value <= 0xFFFF {
+            let bytes = (value as u16).to_be_bytes();
+            Eip712FieldValue { value: bytes.to_vec() }
+        } else {
+            let bytes = value.to_be_bytes();
+            Eip712FieldValue { value: bytes.to_vec() }
         }
     }
 

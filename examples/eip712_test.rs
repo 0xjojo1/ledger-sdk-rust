@@ -216,18 +216,20 @@ where
         }
     }
 
-    // Step 3: Send EIP712Domain implementation (value order must match sorted field definition order)
-    // Sorted order: chainId, name, verifyingContract, version
+    // Step 3: Send EIP712Domain implementation (value order must match raw APDU sequence)
+    // Raw APDU order: name, version, chainId, verifyingContract
     println!("  📥 Sending EIP712Domain implementation...");
     let domain_impl = Eip712StructImplementation::new("EIP712Domain".to_string())
-        .with_value(Eip712FieldValue::from_uint32(1)) // chainId (uint32)
-        .with_value(Eip712FieldValue::from_string("USD Coin")) // name
+        .with_value(Eip712FieldValue::from_string("USD Coin")) // name - 第1个
+        .with_value(Eip712FieldValue::from_string("2")) // version - 第2个
+        .with_value(Eip712FieldValue::from_uint32(1)) // chainId - 第3个
         .with_value(
             Eip712FieldValue::from_address_string("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
                 .unwrap(),
-        ) // verifyingContract
-        .with_value(Eip712FieldValue::from_string("2")); // version
+        ); // verifyingContract - 第4个
 
+
+    println!("domain_impl: {:?}", domain_impl);
     match eth_app
         .send_struct_implementation(&domain_impl, false)
         .await
@@ -239,21 +241,21 @@ where
         }
     }
 
-    // Step 4: Send Permit implementation (value order must match sorted field definition order)
-    // Sorted order: deadline, nonce, owner, spender, value
+    // Step 4: Send Permit implementation (value order must match raw APDU sequence)  
+    // Raw APDU order: owner, spender, value, nonce, deadline
     println!("  📥 Sending Permit implementation...");
     let permit_impl = Eip712StructImplementation::new("Permit".to_string())
-        .with_value(Eip712FieldValue::from_uint32(1718992051)) // deadline (uint32)
-        .with_value(Eip712FieldValue::from_uint32(0)) // nonce (uint32)
         .with_value(
             Eip712FieldValue::from_address_string("0x6cbcd73cd8e8a42844662f0a0e76d7f79afd933d")
                 .unwrap(),
-        ) // owner
+        ) // owner - 第1个
         .with_value(
             Eip712FieldValue::from_address_string("0x111111125421ca6dc452d289314280a0f8842a65")
                 .unwrap(),
-        ) // spender
-        .with_value(Eip712FieldValue::from_uint32(u32::MAX)); // value (uint32 max instead of u64)
+        ) // spender - 第2个
+        .with_value(Eip712FieldValue::from_uint32(u32::MAX)) // value - 第3个 (uint32 max instead of u64)
+        .with_value(Eip712FieldValue::from_uint32(0)) // nonce - 第4个
+        .with_value(Eip712FieldValue::from_uint32(1718992051)); // deadline - 第5个
 
     match eth_app.send_struct_implementation(&permit_impl, true).await {
         Ok(_) => println!("    ✅ Permit implementation sent successfully"),

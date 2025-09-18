@@ -164,26 +164,24 @@ where
         struct_def: &Eip712StructDefinition,
     ) -> EthAppResult<(), E::Error> {
         // Send struct name first
-        // Send struct name with length prefix (LC)
-        let mut struct_name_data = Vec::new();
+        // 直接发送结构名，不添加长度前缀（原始APDU序列证明这是正确的格式）
         let name_bytes = struct_def.name.as_bytes();
-        struct_name_data.push(name_bytes.len() as u8); // LC - length of name
-        struct_name_data.extend_from_slice(name_bytes); // name data
 
         let struct_name_command = APDUCommand {
             cla: Self::CLA,
             ins: ins::EIP712_SEND_STRUCT_DEFINITION,
             p1: 0x00,
             p2: p2_eip712_struct_def::STRUCT_NAME,
-            data: struct_name_data,
+            data: name_bytes.to_vec(),
         };
 
         println!(
-            "struct_name_command: {:02x}{:02x}{:02x}{:02x}{}",
+            "struct_name_command: {:02x}{:02x}{:02x}{:02x}{:02x}{}",
             struct_name_command.cla,
             struct_name_command.ins,
             struct_name_command.p1,
             struct_name_command.p2,
+            struct_name_command.data.len() as u8, // LC - length
             hex::encode(&struct_name_command.data)
         );
 
@@ -201,25 +199,23 @@ where
             let encoded_field = encode_field_definition::<E::Error>(field)?;
             println!("encoded_field: {}", hex::encode(&encoded_field));
 
-            // Add length prefix (LC) for field data
-            let mut field_data = Vec::new();
-            field_data.push(encoded_field.len() as u8); // LC - length of field data
-            field_data.extend_from_slice(&encoded_field); // field data
-
+            // 直接使用编码后的字段数据，不添加额外的长度前缀
+            // 原始APDU序列证明设备期望的是直接的字段数据
             let field_command = APDUCommand {
                 cla: Self::CLA,
                 ins: ins::EIP712_SEND_STRUCT_DEFINITION,
                 p1: 0x00,
                 p2: p2_eip712_struct_def::STRUCT_FIELD,
-                data: field_data,
+                data: encoded_field, // 直接使用编码后的数据，不添加长度前缀
             };
 
             println!(
-                "field_command: {:02x}{:02x}{:02x}{:02x}{}",
+                "field_command: {:02x}{:02x}{:02x}{:02x}{:02x}{}",
                 field_command.cla,
                 field_command.ins,
                 field_command.p1,
                 field_command.p2,
+                field_command.data.len() as u8, // LC - length
                 hex::encode(&field_command.data)
             );
 
@@ -247,30 +243,24 @@ where
         struct_impl: &Eip712StructImplementation,
         complete: bool,
     ) -> EthAppResult<(), E::Error> {
-        // Send struct name as ROOT type first with length prefix (LC)
-        let mut struct_name_data = Vec::new();
+        // Send struct name as ROOT type first - 直接发送结构名，与原始APDU格式一致
         let name_bytes = struct_impl.name.as_bytes();
-        struct_name_data.push(name_bytes.len() as u8); // LC - length of name
-        struct_name_data.extend_from_slice(name_bytes); // name data
 
         let struct_name_command = APDUCommand {
             cla: Self::CLA,
             ins: ins::EIP712_SEND_STRUCT_IMPLEMENTATION,
-            p1: if complete {
-                p1_eip712_struct_impl::COMPLETE_SEND
-            } else {
-                p1_eip712_struct_impl::PARTIAL_SEND
-            },
+            p1: 0x00, // （暂时调整）
             p2: p2_eip712_struct_impl::ROOT_STRUCT,
-            data: struct_name_data,
+            data: name_bytes.to_vec(),
         };
 
         println!(
-            "struct_impl_name_command: {:02x}{:02x}{:02x}{:02x}{}",
+            "struct_impl_name_command: {:02x}{:02x}{:02x}{:02x}{:02x}{}",
             struct_name_command.cla,
             struct_name_command.ins,
             struct_name_command.p1,
             struct_name_command.p2,
+            struct_name_command.data.len() as u8, // LC - length
             hex::encode(&struct_name_command.data)
         );
 
@@ -289,30 +279,24 @@ where
             encoded_value.extend_from_slice(&(value.value.len() as u16).to_be_bytes());
             encoded_value.extend_from_slice(&value.value);
 
-            // Add outer length prefix (LC) for APDU
-            let mut field_data = Vec::new();
-            field_data.push(encoded_value.len() as u8); // LC - length of encoded value
-            field_data.extend_from_slice(&encoded_value); // encoded value data
+           
 
             let field_command = APDUCommand {
                 cla: Self::CLA,
                 ins: ins::EIP712_SEND_STRUCT_IMPLEMENTATION,
-                p1: if complete && index == struct_impl.values.len() - 1 {
-                    p1_eip712_struct_impl::COMPLETE_SEND
-                } else {
-                    p1_eip712_struct_impl::PARTIAL_SEND
-                },
+                p1: 0x00, // （暂时调整）
                 p2: p2_eip712_struct_impl::STRUCT_FIELD,
-                data: field_data,
+                data: encoded_value, // 直接使用带内部长度前缀的数据，不添加外部长度前缀
             };
 
             println!(
-                "struct_impl_field_command[{}]: {:02x}{:02x}{:02x}{:02x}{}",
+                "struct_impl_field_command[{}]: {:02x}{:02x}{:02x}{:02x}{:02x}{}",
                 index,
                 field_command.cla,
                 field_command.ins,
                 field_command.p1,
                 field_command.p2,
+                field_command.data.len() as u8, // LC - length
                 hex::encode(&field_command.data)
             );
 

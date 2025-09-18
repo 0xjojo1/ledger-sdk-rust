@@ -23,12 +23,14 @@ use ledger_transport::Exchange;
 
 // Re-export all public types and traits
 pub mod commands;
+pub mod eip712_high_level;
 pub mod errors;
 pub mod instructions;
 pub mod types;
 pub mod utils;
 
 pub use commands::*;
+pub use eip712_high_level::*;
 pub use errors::*;
 pub use types::*;
 
@@ -172,9 +174,8 @@ where
     async fn send_struct_implementation(
         transport: &E,
         struct_impl: &Eip712StructImplementation,
-        complete: bool,
     ) -> EthAppResult<(), E::Error> {
-        EthApp::send_struct_implementation(transport, struct_impl, complete).await
+        EthApp::send_struct_implementation(transport, struct_impl).await
     }
 
     async fn set_array_size(transport: &E, size: u8) -> EthAppResult<(), E::Error> {
@@ -397,7 +398,6 @@ where
     pub async fn send_struct_implementation(
         &self,
         struct_impl: &Eip712StructImplementation,
-        complete: bool,
     ) -> EthAppResult<(), E::Error> {
         // Check version requirement for EIP-712 full implementation
         let config = self.get_configuration().await?;
@@ -408,7 +408,7 @@ where
             )));
         }
 
-        EthApp::send_struct_implementation(&self.transport, struct_impl, complete).await
+        EthApp::send_struct_implementation(&self.transport, struct_impl).await
     }
 
     /// Set array size for upcoming array fields in EIP-712 implementation
@@ -487,5 +487,148 @@ where
         }
 
         EthApp::activate_filtering(&self.transport).await
+    }
+
+    /// Sign EIP-712 typed data using the high-level API (matching viem interface)
+    ///
+    /// This method provides a simple interface for EIP-712 signing that matches the viem
+    /// interface. It automatically handles the conversion from high-level typed data to
+    /// the low-level struct definitions and implementations required by the Ledger device.
+    ///
+    /// **Version Requirements**: Requires app version >= 1.9.19
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - BIP32 derivation path for the signing key
+    /// * `typed_data` - EIP-712 typed data structure matching viem interface
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use ledger_eth_app::{Eip712Domain, Eip712Field, Eip712Struct, Eip712Types, Eip712TypedData};
+    /// use serde_json::json;
+    /// use std::collections::HashMap;
+    ///
+    /// let domain = Eip712Domain::new()
+    ///     .with_name("Ether Mail".to_string())
+    ///     .with_version("1".to_string())
+    ///     .with_chain_id(1);
+    ///
+    /// let mut types = Eip712Types::new();
+    /// types.insert(
+    ///     "Person".to_string(),
+    ///     Eip712Struct::new()
+    ///         .with_field(Eip712Field::new("name".to_string(), "string".to_string()))
+    ///         .with_field(Eip712Field::new("wallet".to_string(), "address".to_string())),
+    /// );
+    ///
+    /// let message = json!({
+    ///     "from": {
+    ///         "name": "Cow",
+    ///         "wallet": "0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826"
+    ///     },
+    ///     "to": {
+    ///         "name": "Bob",
+    ///         "wallet": "0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB"
+    ///     },
+    ///     "contents": "Hello, Bob!"
+    /// });
+    ///
+    /// let typed_data = Eip712TypedData::new(domain, types, "Mail".to_string(), message);
+    /// let signature = app.sign_eip712_typed_data(&path, &typed_data).await?;
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns `EthAppError::UnsupportedVersion` if app version is below 1.9.19
+    ///
+    pub async fn sign_eip712_typed_data(
+        &self,
+        path: &BipPath,
+        typed_data: &Eip712TypedData,
+    ) -> EthAppResult<crate::types::Signature, E::Error> {
+        // Check version requirement for EIP-712 full implementation
+        let config = self.get_configuration().await?;
+        if !config.version.supports_eip712_full() {
+            return Err(EthAppError::UnsupportedVersion(format!(
+                "EIP-712 typed data signing requires app version >= 1.9.19, found {}",
+                config.version
+            )));
+        }
+
+        EthApp::sign_eip712_typed_data(&self.transport, path, typed_data).await
+    }
+
+    /// Sign EIP-712 typed data from JSON string
+    ///
+    /// This method accepts a JSON string containing EIP-712 typed data and automatically
+    /// parses, validates, and signs it. The JSON format should match the standard EIP-712
+    /// structure with domain, types, primaryType, and message fields.
+    ///
+    /// **Version Requirements**: Requires app version >= 1.9.19
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - BIP32 derivation path for the signing key
+    /// * `json_str` - JSON string containing EIP-712 typed data
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let json_str = r#"{
+    ///   "domain": {
+    ///     "name": "USD Coin",
+    ///     "verifyingContract": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    ///     "chainId": 1,
+    ///     "version": "2"
+    ///   },
+    ///   "primaryType": "Permit",
+    ///   "message": {
+    ///     "deadline": 1718992051,
+    ///     "nonce": 0,
+    ///     "spender": "0x111111125421ca6dc452d289314280a0f8842a65",
+    ///     "owner": "0x6cbcd73cd8e8a42844662f0a0e76d7f79afd933d",
+    ///     "value": "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+    ///   },
+    ///   "types": {
+    ///     "EIP712Domain": [
+    ///       {"name": "name", "type": "string"},
+    ///       {"name": "version", "type": "string"},
+    ///       {"name": "chainId", "type": "uint256"},
+    ///       {"name": "verifyingContract", "type": "address"}
+    ///     ],
+    ///     "Permit": [
+    ///       {"name": "owner", "type": "address"},
+    ///       {"name": "spender", "type": "address"},
+    ///       {"name": "value", "type": "uint256"},
+    ///       {"name": "nonce", "type": "uint256"},
+    ///       {"name": "deadline", "type": "uint256"}
+    ///     ]
+    ///   }
+    /// }"#;
+    ///
+    /// let signature = app.sign_eip712_from_json(&path, json_str).await?;
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns `EthAppError::UnsupportedVersion` if app version is below 1.9.19
+    /// Returns `EthAppError::InvalidEip712Data` if JSON format is invalid
+    ///
+    pub async fn sign_eip712_from_json(
+        &self,
+        path: &BipPath,
+        json_str: &str,
+    ) -> EthAppResult<crate::types::Signature, E::Error> {
+        // Check version requirement for EIP-712 full implementation
+        let config = self.get_configuration().await?;
+        if !config.version.supports_eip712_full() {
+            return Err(EthAppError::UnsupportedVersion(format!(
+                "EIP-712 JSON signing requires app version >= 1.9.19, found {}",
+                config.version
+            )));
+        }
+
+        EthApp::sign_eip712_from_json(&self.transport, path, json_str).await
     }
 }

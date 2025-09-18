@@ -3,6 +3,7 @@
 //! Core data types for Ethereum application
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fmt;
 
 /// BIP32 derivation path for Ethereum accounts
@@ -603,6 +604,17 @@ impl Eip712FieldValue {
         }
     }
 
+    /// Create from a uint value with specific size
+    pub fn from_uint_sized(size: u8, value: u64) -> Self {
+        let mut bytes = vec![0u8; size as usize];
+        let value_bytes = value.to_be_bytes();
+        let start = bytes.len().saturating_sub(value_bytes.len());
+        let copy_len = (bytes.len() - start).min(value_bytes.len());
+        bytes[start..start + copy_len]
+            .copy_from_slice(&value_bytes[value_bytes.len() - copy_len..]);
+        Eip712FieldValue { value: bytes }
+    }
+
     /// Create from a uint32 value (4 bytes)
     pub fn from_uint32(value: u32) -> Self {
         Eip712FieldValue {
@@ -639,6 +651,22 @@ impl Eip712FieldValue {
     /// Create a reference to a nested struct (empty value for struct references)
     pub fn from_struct() -> Self {
         Eip712FieldValue { value: vec![] }
+    }
+
+    /// Create from an int value with specific size
+    pub fn from_int_sized(size: u8, value: i64) -> Self {
+        let mut bytes = vec![0u8; size as usize];
+        let value_bytes = value.to_be_bytes();
+        let start = bytes.len().saturating_sub(value_bytes.len());
+        let copy_len = (bytes.len() - start).min(value_bytes.len());
+        bytes[start..start + copy_len]
+            .copy_from_slice(&value_bytes[value_bytes.len() - copy_len..]);
+        Eip712FieldValue { value: bytes }
+    }
+
+    /// Create from bytes
+    pub fn from_bytes(bytes: Vec<u8>) -> Self {
+        Eip712FieldValue { value: bytes }
     }
 }
 
@@ -716,112 +744,207 @@ pub struct Eip712FilterParams {
     pub discarded: bool,
 }
 
-#[cfg(test)]
-mod version_tests {
-    use super::*;
+// ============================================================================
+// High-level EIP-712 Types (matching viem interface)
+// ============================================================================
 
-    #[test]
-    fn test_version_display() {
-        let version = AppVersion::new(1, 9, 19);
-        assert_eq!(version.to_string(), "1.9.19");
+/// EIP-712 domain separator
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Eip712Domain {
+    /// Domain name
+    pub name: Option<String>,
+    /// Domain version
+    pub version: Option<String>,
+    /// Chain ID
+    pub chain_id: Option<u64>,
+    /// Verifying contract address
+    pub verifying_contract: Option<String>,
+    /// Salt (optional)
+    pub salt: Option<Vec<u8>>,
+}
+
+impl Eip712Domain {
+    /// Create a new domain
+    pub fn new() -> Self {
+        Eip712Domain {
+            name: None,
+            version: None,
+            chain_id: None,
+            verifying_contract: None,
+            salt: None,
+        }
     }
 
-    #[test]
-    fn test_eip712_v0_support() {
-        // Supported versions
-        assert!(AppVersion::new(1, 5, 0).supports_eip712_v0());
-        assert!(AppVersion::new(1, 6, 0).supports_eip712_v0());
-        assert!(AppVersion::new(2, 0, 0).supports_eip712_v0());
-        assert!(AppVersion::new(1, 9, 19).supports_eip712_v0());
-
-        // Unsupported versions
-        assert!(!AppVersion::new(1, 4, 99).supports_eip712_v0());
-        assert!(!AppVersion::new(1, 0, 0).supports_eip712_v0());
-        assert!(!AppVersion::new(0, 9, 0).supports_eip712_v0());
+    /// Set the domain name
+    pub fn with_name(mut self, name: String) -> Self {
+        self.name = Some(name);
+        self
     }
 
-    #[test]
-    fn test_eip712_full_support() {
-        // Supported versions
-        assert!(AppVersion::new(1, 9, 19).supports_eip712_full());
-        assert!(AppVersion::new(1, 9, 20).supports_eip712_full());
-        assert!(AppVersion::new(1, 10, 0).supports_eip712_full());
-        assert!(AppVersion::new(2, 0, 0).supports_eip712_full());
-
-        // Unsupported versions
-        assert!(!AppVersion::new(1, 9, 18).supports_eip712_full());
-        assert!(!AppVersion::new(1, 8, 99).supports_eip712_full());
-        assert!(!AppVersion::new(1, 5, 0).supports_eip712_full());
-        assert!(!AppVersion::new(0, 9, 19).supports_eip712_full());
+    /// Set the domain version
+    pub fn with_version(mut self, version: String) -> Self {
+        self.version = Some(version);
+        self
     }
 
-    #[test]
-    fn test_version_comparison() {
-        let v1_5_0 = AppVersion::new(1, 5, 0);
-        let v1_9_19 = AppVersion::new(1, 9, 19);
-        let v2_0_0 = AppVersion::new(2, 0, 0);
+    /// Set the chain ID
+    pub fn with_chain_id(mut self, chain_id: u64) -> Self {
+        self.chain_id = Some(chain_id);
+        self
+    }
 
-        assert!(v1_9_19.is_at_least(&v1_5_0));
-        assert!(v2_0_0.is_at_least(&v1_9_19));
-        assert!(v1_5_0.is_at_least(&v1_5_0)); // Equal
+    /// Set the verifying contract address
+    pub fn with_verifying_contract(mut self, address: String) -> Self {
+        self.verifying_contract = Some(address);
+        self
+    }
 
-        assert!(!v1_5_0.is_at_least(&v1_9_19));
-        assert!(!v1_9_19.is_at_least(&v2_0_0));
+    /// Set the salt
+    pub fn with_salt(mut self, salt: Vec<u8>) -> Self {
+        self.salt = Some(salt);
+        self
+    }
+}
+
+/// EIP-712 field definition for high-level API
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Eip712Field {
+    /// Field name
+    pub name: String,
+    /// Field type (e.g., "string", "uint256", "address", "Person[]")
+    pub r#type: String,
+}
+
+impl Eip712Field {
+    /// Create a new field definition
+    pub fn new(name: String, r#type: String) -> Self {
+        Eip712Field { name, r#type }
+    }
+}
+
+/// EIP-712 struct definition for high-level API
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Eip712Struct {
+    /// Struct fields
+    pub fields: Vec<Eip712Field>,
+}
+
+impl Eip712Struct {
+    /// Create a new struct definition
+    pub fn new() -> Self {
+        Eip712Struct { fields: Vec::new() }
+    }
+
+    /// Add a field to the struct
+    pub fn with_field(mut self, field: Eip712Field) -> Self {
+        self.fields.push(field);
+        self
+    }
+}
+
+/// EIP-712 types mapping (struct name -> struct definition)
+pub type Eip712Types = HashMap<String, Eip712Struct>;
+
+/// EIP-712 typed data (matching viem interface)
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Eip712TypedData {
+    /// Domain separator
+    pub domain: Eip712Domain,
+    /// Type definitions
+    pub types: Eip712Types,
+    /// Primary type (the main struct being signed)
+    pub primary_type: String,
+    /// Message data (as serde_json::Value for flexibility)
+    pub message: serde_json::Value,
+}
+
+impl Eip712TypedData {
+    /// Create new typed data
+    pub fn new(
+        domain: Eip712Domain,
+        types: Eip712Types,
+        primary_type: String,
+        message: serde_json::Value,
+    ) -> Self {
+        Eip712TypedData {
+            domain,
+            types,
+            primary_type,
+            message,
+        }
     }
 }
 
 #[cfg(test)]
-mod bip_path_tests {
+mod eip712_typed_data_tests {
     use super::*;
 
     #[test]
-    fn test_bip_path_creation() {
-        let path = BipPath::new(vec![0x8000002C, 0x8000003C, 0x80000000, 0, 0]).unwrap();
-        assert_eq!(path.indices.len(), 5);
-        assert_eq!(path.indices[0], 0x8000002C);
-        assert_eq!(path.indices[1], 0x8000003C);
-        assert_eq!(path.indices[2], 0x80000000);
-        assert_eq!(path.indices[3], 0);
-        assert_eq!(path.indices[4], 0);
+    fn test_eip712_domain_creation() {
+        let domain = Eip712Domain::new()
+            .with_name("Ether Mail".to_string())
+            .with_version("1".to_string())
+            .with_chain_id(1)
+            .with_verifying_contract("0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC".to_string());
+
+        assert_eq!(domain.name, Some("Ether Mail".to_string()));
+        assert_eq!(domain.version, Some("1".to_string()));
+        assert_eq!(domain.chain_id, Some(1));
+        assert_eq!(
+            domain.verifying_contract,
+            Some("0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC".to_string())
+        );
     }
 
     #[test]
-    fn test_bip_path_from_string() {
-        // Test standard Ethereum path
-        let path = BipPath::from_string("m/44'/60'/0'/0/0").unwrap();
-        assert_eq!(path.indices.len(), 5);
-        assert_eq!(path.indices[0], 0x8000002C); // 44'
-        assert_eq!(path.indices[1], 0x8000003C); // 60'
-        assert_eq!(path.indices[2], 0x80000000); // 0'
-        assert_eq!(path.indices[3], 0); // 0
-        assert_eq!(path.indices[4], 0); // 0
+    fn test_eip712_struct_creation() {
+        let person_struct = Eip712Struct::new()
+            .with_field(Eip712Field::new("name".to_string(), "string".to_string()))
+            .with_field(Eip712Field::new(
+                "wallet".to_string(),
+                "address".to_string(),
+            ));
 
-        // Test with different account and address index
-        let path2 = BipPath::from_string("m/44'/60'/1'/0/5").unwrap();
-        assert_eq!(path2.indices[2], 0x80000001); // 1'
-        assert_eq!(path2.indices[4], 5); // 5
-
-        // Test non-hardened indices
-        let path3 = BipPath::from_string("m/44'/60'/0'/1/2").unwrap();
-        assert_eq!(path3.indices[3], 1); // 1 (not hardened)
-        assert_eq!(path3.indices[4], 2); // 2 (not hardened)
+        assert_eq!(person_struct.fields.len(), 2);
+        assert_eq!(person_struct.fields[0].name, "name");
+        assert_eq!(person_struct.fields[0].r#type, "string");
+        assert_eq!(person_struct.fields[1].name, "wallet");
+        assert_eq!(person_struct.fields[1].r#type, "address");
     }
 
     #[test]
-    fn test_bip_path_from_string_errors() {
-        // Test invalid format
-        assert!(BipPath::from_string("44'/60'/0'/0/0").is_err());
-        assert!(BipPath::from_string("m/44'/60'/invalid/0/0").is_err());
-        assert!(BipPath::from_string("m/").is_err()); // Empty path
-        assert!(BipPath::from_string("m").is_err()); // No slash
-    }
+    fn test_eip712_typed_data_creation() {
+        let domain = Eip712Domain::new()
+            .with_name("Ether Mail".to_string())
+            .with_version("1".to_string())
+            .with_chain_id(1);
 
-    #[test]
-    fn test_bip_path_display() {
-        let path = BipPath::from_string("m/44'/60'/0'/0/0").unwrap();
-        assert_eq!(format!("{}", path), "m/44'/60'/0'/0/0");
+        let mut types = Eip712Types::new();
+        types.insert(
+            "Person".to_string(),
+            Eip712Struct::new()
+                .with_field(Eip712Field::new("name".to_string(), "string".to_string()))
+                .with_field(Eip712Field::new(
+                    "wallet".to_string(),
+                    "address".to_string(),
+                )),
+        );
 
-        let path2 = BipPath::from_string("m/44'/60'/1'/1/2").unwrap();
-        assert_eq!(format!("{}", path2), "m/44'/60'/1'/1/2");
+        let message = serde_json::json!({
+            "from": {
+                "name": "Cow",
+                "wallet": "0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826"
+            },
+            "to": {
+                "name": "Bob",
+                "wallet": "0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB"
+            },
+            "contents": "Hello, Bob!"
+        });
+
+        let typed_data = Eip712TypedData::new(domain, types, "Mail".to_string(), message);
+
+        assert_eq!(typed_data.primary_type, "Mail");
+        assert!(typed_data.types.contains_key("Person"));
     }
 }

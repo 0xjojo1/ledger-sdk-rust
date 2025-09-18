@@ -83,6 +83,10 @@ pub enum EthAppError<E: std::error::Error> {
     /// Unsupported app version
     #[error("Unsupported version: {0}")]
     UnsupportedVersion(String),
+
+    /// Device returned a specific status word
+    #[error("Device status 0x{sw:04X}: {description}")]
+    DeviceStatus { sw: u16, description: String },
 }
 
 impl<E: std::error::Error> EthAppError<E> {
@@ -112,3 +116,48 @@ impl<E: std::error::Error> EthAppError<E> {
 
 /// Result type alias for Ethereum application operations
 pub type EthAppResult<T, E> = Result<T, EthAppError<E>>;
+
+/// Map LedgerAppError to Ethereum app specific error with SW decoding when possible
+pub fn map_ledger_error<E: std::error::Error>(err: LedgerAppError<E>) -> EthAppError<E> {
+    match err {
+        // User cancel / security status not satisfied
+        LedgerAppError::AppSpecific(sw, _) if sw == 0x6982 => EthAppError::UserRejected,
+        LedgerAppError::Unknown(sw) if sw == 0x6982 => EthAppError::UserRejected,
+
+        // Map known ETH app status words to descriptions
+        LedgerAppError::AppSpecific(sw, _) | LedgerAppError::Unknown(sw) => {
+            EthAppError::DeviceStatus {
+                sw,
+                description: describe_eth_status(sw).to_string(),
+            }
+        }
+
+        // Fallback: treat as transport-layer app error
+        other => EthAppError::Transport(other),
+    }
+}
+
+/// ETH app specific status word descriptions (subset per spec)
+fn describe_eth_status(sw: u16) -> &'static str {
+    match sw {
+        0x6001 => "Mode check fail",
+        0x6501 => "TransactionType not supported",
+        0x6502 => "Output buffer too small for chainId conversion",
+        0x6982 => "Security status not satisfied (Canceled by user)",
+        0x6983 => "Wrong Data length",
+        0x6984 => "Plugin not installed",
+        0x6985 => "Condition not satisfied",
+        0x6A00 => "Error without info",
+        0x6A80 => "Invalid data",
+        0x6A84 => "Insufficient memory",
+        0x6A88 => "Data not found",
+        0x6B00 => "Incorrect parameter P1 or P2",
+        0x6D00 => "Incorrect parameter INS",
+        0x6E00 => "Incorrect parameter CLA",
+        0x9000 => "Normal ending of the command",
+        0x911C => "Command code not supported (Ledger-PKI not yet available)",
+        _ if (sw & 0xFF00) == 0x6800 => "Internal error (Please report)",
+        _ if (sw & 0xFF00) == 0x6F00 => "Technical problem (Internal error, please report)",
+        _ => "Unknown status",
+    }
+}

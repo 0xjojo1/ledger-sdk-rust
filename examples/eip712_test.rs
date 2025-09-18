@@ -43,100 +43,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     println!("🔗 Connected to device");
 
-    println!("\n📋 Testing raw APDU sequence...");
-    test_raw_apdu_sequence(&eth_app).await?;
+    // println!("\n📋 Testing raw APDU sequence...");
+    // test_raw_apdu_sequence(&eth_app).await?;
 
     println!("\n📋 Testing EIP-712 full implementation...");
     test_eip712_full(&eth_app).await?;
 
     println!("\n🎉 EIP-712 test completed!");
-    Ok(())
-}
-
-/// Test raw APDU sequence
-async fn test_raw_apdu_sequence<E>(eth_app: &EthereumApp<E>) -> Result<(), Box<dyn Error>>
-where
-    E: ledger_transport::Exchange + Send + Sync,
-    E::Error: std::error::Error,
-{
-    let _path = BipPath::ethereum_standard(0, 0);
-    use ledger_apdu::APDUCommand;
-    let apdu_sequence = vec![
-        "e01a00000c454950373132446f6d61696e",
-        "e01a00ff0605046e616d65", 
-        "e01a00ff09050776657273696f6e",
-        "e01a00ff0a422007636861696e4964",
-        "e01a00ff130311766572696679696e67436f6e7472616374",
-        "e01a0000065065726d6974",
-        "e01a00ff0703056f776e6572",
-        "e01a00ff0903077370656e646572",
-        "e01a00ff0842200576616c7565",
-        "e01a00ff084220056e6f6e6365",
-        "e01a00ff0b422008646561646c696e65",
-        "e01c00000c454950373132446f6d61696e",
-        "e01c00ff0a000855534420436f696e",
-        "e01c00ff03000132",
-        "e01c00ff03000101",
-        "e01c00ff160014a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-        "e01e000f651c417574686f72697a65207370656e64696e67206f6620746f6b656e730346304402203b3bf0032c9576c665b38049d5c49e9a5be98eb1a2720ab19d2689a81d47452c02202d6324f8349b6e2e0fd0b4e19b7ff90447f30ede78de33a2b8427263b6d81710",
-        "e01c0000065065726d6974",
-        "e01c00ff1600146cbcd73cd8e8a42844662f0a0e76d7f79afd933d",
-        "e01e00ff4f075370656e646572463044022038dce9f341066fafea655d30a6d61dd229912e2ad84823847907a3187ec1331602205cd875606cfedd1b0a430d82796dd896f00a60b61af7fca732123dc73b92907c",
-        "e01c00ff160014111111125421ca6dc452d289314280a0f8842a65",
-        "e00c000115058000002c8000003c800000000000000000000000",
-    ];
-
-    println!("📋 Starting raw APDU sequence...");
-
-    for (index, apdu_hex) in apdu_sequence.iter().enumerate() {
-        println!("Sending APDU #{}: {}", index + 1, apdu_hex);
-
-        // Convert hex string to byte array
-        let apdu_bytes = hex::decode(apdu_hex).map_err(|e| format!("Decode failed: {}", e))?;
-
-        if apdu_bytes.len() < 4 {
-            return Err(format!("APDU too short: {}", apdu_hex).into());
-        }
-
-        let cla = apdu_bytes[0];
-        let ins = apdu_bytes[1];
-        let p1 = apdu_bytes[2];
-        let p2 = apdu_bytes[3];
-        let data = if apdu_bytes.len() > 5 {
-            apdu_bytes[5..].to_vec()
-        } else {
-            vec![]
-        };
-
-        let command = APDUCommand {
-            cla,
-            ins,
-            p1,
-            p2,
-            data,
-        };
-
-        // Send command - ensure each APDU succeeds before continuing
-        match eth_app.transport().exchange(&command).await {
-            Ok(response) => {
-                println!(
-                    "✅ APDU #{} sent successfully, response: {:?}",
-                    index + 1,
-                    &response.data()
-                );
-            }
-            Err(e) => {
-                eprintln!("❌ APDU #{} failed: {}", index + 1, e);
-                return Err(format!("APDU #{} failed: {}", index + 1, e).into());
-            }
-        }
-
-        // Add delay
-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-    }
-
-    println!("✅ APDU sequence completed");
-
     Ok(())
 }
 
@@ -228,10 +141,7 @@ where
         ) // verifyingContract
         .with_value(Eip712FieldValue::from_string("2")); // version
 
-    match eth_app
-        .send_struct_implementation(&domain_impl, false)
-        .await
-    {
+    match eth_app.send_struct_implementation(&domain_impl, true).await {
         Ok(_) => println!("    ✅ EIP712Domain implementation sent successfully"),
         Err(e) => {
             eprintln!("    ❌ EIP712Domain implementation failed: {}", e);

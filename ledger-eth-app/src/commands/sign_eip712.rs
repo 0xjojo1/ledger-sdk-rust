@@ -18,6 +18,9 @@ use crate::types::{
 use crate::utils::{encode_bip32_path, validate_bip32_path};
 use crate::EthApp;
 
+// Maximum APDU payload size for a single frame (data field only)
+const APDU_MAX_PAYLOAD: usize = 255;
+
 /// EIP-712 v0 signing trait (simple domain + message hash mode)
 #[async_trait]
 pub trait SignEip712V0<E>
@@ -57,7 +60,6 @@ where
     async fn send_struct_implementation(
         transport: &E,
         struct_impl: &Eip712StructImplementation,
-        complete: bool,
     ) -> EthAppResult<(), E::Error>;
 
     /// Set array size for upcoming array fields
@@ -163,29 +165,13 @@ where
         transport: &E,
         struct_def: &Eip712StructDefinition,
     ) -> EthAppResult<(), E::Error> {
-        // Send struct name first
-        // Send struct name with length prefix (LC)
-        let mut struct_name_data = Vec::new();
-        let name_bytes = struct_def.name.as_bytes();
-        struct_name_data.push(name_bytes.len() as u8); // LC - length of name
-        struct_name_data.extend_from_slice(name_bytes); // name data
-
         let struct_name_command = APDUCommand {
             cla: Self::CLA,
             ins: ins::EIP712_SEND_STRUCT_DEFINITION,
             p1: 0x00,
             p2: p2_eip712_struct_def::STRUCT_NAME,
-            data: struct_name_data,
+            data: struct_def.name.as_bytes(),
         };
-
-        println!(
-            "struct_name_command: {:02x}{:02x}{:02x}{:02x}{}",
-            struct_name_command.cla,
-            struct_name_command.ins,
-            struct_name_command.p1,
-            struct_name_command.p2,
-            hex::encode(&struct_name_command.data)
-        );
 
         let response = transport
             .exchange(&struct_name_command)
@@ -193,35 +179,19 @@ where
             .map_err(|e| EthAppError::Transport(e.into()))?;
 
         <EthApp as AppExt<E>>::handle_response_error(&response)
-            .map_err(|e| EthAppError::Transport(e))?;
+            .map_err(|e| crate::errors::map_ledger_error(e))?;
 
         // Send each field definition
         for field in &struct_def.fields {
-            println!("encode_field_definition: {:?}", field);
             let encoded_field = encode_field_definition::<E::Error>(field)?;
-            println!("encoded_field: {}", hex::encode(&encoded_field));
-
-            // Add length prefix (LC) for field data
-            let mut field_data = Vec::new();
-            field_data.push(encoded_field.len() as u8); // LC - length of field data
-            field_data.extend_from_slice(&encoded_field); // field data
 
             let field_command = APDUCommand {
                 cla: Self::CLA,
                 ins: ins::EIP712_SEND_STRUCT_DEFINITION,
                 p1: 0x00,
                 p2: p2_eip712_struct_def::STRUCT_FIELD,
-                data: field_data,
+                data: encoded_field,
             };
-
-            println!(
-                "field_command: {:02x}{:02x}{:02x}{:02x}{}",
-                field_command.cla,
-                field_command.ins,
-                field_command.p1,
-                field_command.p2,
-                hex::encode(&field_command.data)
-            );
 
             let response = transport
                 .exchange(&field_command)
@@ -229,7 +199,7 @@ where
                 .map_err(|e| EthAppError::Transport(e.into()))?;
 
             <EthApp as AppExt<E>>::handle_response_error(&response)
-                .map_err(|e| EthAppError::Transport(e))?;
+                .map_err(|e| crate::errors::map_ledger_error(e))?;
         }
 
         Ok(())
@@ -245,34 +215,14 @@ where
     async fn send_struct_implementation(
         transport: &E,
         struct_impl: &Eip712StructImplementation,
-        complete: bool,
     ) -> EthAppResult<(), E::Error> {
-        // Send struct name as ROOT type first with length prefix (LC)
-        let mut struct_name_data = Vec::new();
-        let name_bytes = struct_impl.name.as_bytes();
-        struct_name_data.push(name_bytes.len() as u8); // LC - length of name
-        struct_name_data.extend_from_slice(name_bytes); // name data
-
         let struct_name_command = APDUCommand {
             cla: Self::CLA,
             ins: ins::EIP712_SEND_STRUCT_IMPLEMENTATION,
-            p1: if complete {
-                p1_eip712_struct_impl::COMPLETE_SEND
-            } else {
-                p1_eip712_struct_impl::PARTIAL_SEND
-            },
+            p1: p1_eip712_struct_impl::COMPLETE_SEND,
             p2: p2_eip712_struct_impl::ROOT_STRUCT,
-            data: struct_name_data,
+            data: struct_impl.name.as_bytes(),
         };
-
-        println!(
-            "struct_impl_name_command: {:02x}{:02x}{:02x}{:02x}{}",
-            struct_name_command.cla,
-            struct_name_command.ins,
-            struct_name_command.p1,
-            struct_name_command.p2,
-            hex::encode(&struct_name_command.data)
-        );
 
         let response = transport
             .exchange(&struct_name_command)
@@ -280,49 +230,46 @@ where
             .map_err(|e| EthAppError::Transport(e.into()))?;
 
         <EthApp as AppExt<E>>::handle_response_error(&response)
-            .map_err(|e| EthAppError::Transport(e))?;
+            .map_err(|e| crate::errors::map_ledger_error(e))?;
 
         // Send each field value as FIELD type
         for (index, value) in struct_impl.values.iter().enumerate() {
-            // Encode field value with internal length prefix
-            let mut encoded_value = Vec::new();
-            encoded_value.extend_from_slice(&(value.value.len() as u16).to_be_bytes());
-            encoded_value.extend_from_slice(&value.value);
+            // Encode field value with a 2-byte big-endian length prefix
+            let mut buffer = Vec::with_capacity(2 + value.value.len());
+            buffer.extend_from_slice(&(value.value.len() as u16).to_be_bytes());
+            buffer.extend_from_slice(&value.value);
 
-            // Add outer length prefix (LC) for APDU
-            let mut field_data = Vec::new();
-            field_data.push(encoded_value.len() as u8); // LC - length of encoded value
-            field_data.extend_from_slice(&encoded_value); // encoded value data
+            // Chunk the buffer into APDU_MAX_PAYLOAD-sized frames
+            let mut offset = 0usize;
+            while offset < buffer.len() {
+                let end = core::cmp::min(offset + APDU_MAX_PAYLOAD, buffer.len());
+                let chunk = &buffer[offset..end];
+                let is_last_chunk = end == buffer.len();
 
-            let field_command = APDUCommand {
-                cla: Self::CLA,
-                ins: ins::EIP712_SEND_STRUCT_IMPLEMENTATION,
-                p1: if complete && index == struct_impl.values.len() - 1 {
+                let p1 = if is_last_chunk {
                     p1_eip712_struct_impl::COMPLETE_SEND
                 } else {
                     p1_eip712_struct_impl::PARTIAL_SEND
-                },
-                p2: p2_eip712_struct_impl::STRUCT_FIELD,
-                data: field_data,
-            };
+                };
 
-            println!(
-                "struct_impl_field_command[{}]: {:02x}{:02x}{:02x}{:02x}{}",
-                index,
-                field_command.cla,
-                field_command.ins,
-                field_command.p1,
-                field_command.p2,
-                hex::encode(&field_command.data)
-            );
+                let field_command = APDUCommand {
+                    cla: Self::CLA,
+                    ins: ins::EIP712_SEND_STRUCT_IMPLEMENTATION,
+                    p1,
+                    p2: p2_eip712_struct_impl::STRUCT_FIELD,
+                    data: chunk,
+                };
 
-            let response = transport
-                .exchange(&field_command)
-                .await
-                .map_err(|e| EthAppError::Transport(e.into()))?;
+                let response = transport
+                    .exchange(&field_command)
+                    .await
+                    .map_err(|e| EthAppError::Transport(e.into()))?;
 
-            <EthApp as AppExt<E>>::handle_response_error(&response)
-                .map_err(|e| EthAppError::Transport(e))?;
+                <EthApp as AppExt<E>>::handle_response_error(&response)
+                    .map_err(|e| EthAppError::Transport(e))?;
+
+                offset = end;
+            }
         }
 
         Ok(())

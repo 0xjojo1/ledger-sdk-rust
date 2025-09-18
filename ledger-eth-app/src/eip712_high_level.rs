@@ -17,7 +17,7 @@ use crate::{BipPath, EthApp};
 use async_trait::async_trait;
 use ledger_transport::Exchange;
 use num_bigint::{BigInt, BigUint, Sign};
-use num_traits::One;
+use num_traits::{One, Zero};
 use serde_json::{from_str, Value};
 
 /// High-level EIP-712 signing trait
@@ -170,11 +170,11 @@ impl Eip712Converter {
                 Ok(Eip712FieldValue::from_string(str_val))
             }
             Eip712FieldType::Uint(size) => {
-                let bytes = Self::parse_uint_to_fixed_bytes(value, *size)?;
+                let bytes = Self::parse_uint_to_min_be(value, *size)?;
                 Ok(Eip712FieldValue::from_bytes(bytes))
             }
             Eip712FieldType::Int(size) => {
-                let bytes = Self::parse_int_to_fixed_bytes(value, *size)?;
+                let bytes = Self::parse_int_to_min_be(value, *size)?;
                 Ok(Eip712FieldValue::from_bytes(bytes))
             }
             Eip712FieldType::FixedBytes(size) => {
@@ -203,34 +203,8 @@ impl Eip712Converter {
         }
     }
 
-    fn parse_uint_to_min_be(value: &Value) -> Result<Vec<u8>, String> {
-        use num_bigint::BigUint;
-        use num_traits::Zero;
-
-        let big: BigUint = if let Some(u) = value.as_u64() {
-            BigUint::from(u)
-        } else if let Some(s) = value.as_str() {
-            let s = s.trim();
-            if s.starts_with("0x") || s.starts_with("0X") {
-                let bytes =
-                    hex::decode(&s[2..]).map_err(|e| format!("Invalid hex for uint: {}", e))?;
-                BigUint::from_bytes_be(&bytes)
-            } else {
-                BigUint::parse_bytes(s.as_bytes(), 10)
-                    .ok_or_else(|| "Invalid decimal string for uint".to_string())?
-            }
-        } else {
-            return Err("Expected number or numeric string for uint".to_string());
-        };
-
-        if big.is_zero() {
-            return Ok(vec![0u8]);
-        }
-        Ok(big.to_bytes_be())
-    }
-
-    /// Parse unsigned integer (uintN) from JSON number or string (dec or 0x-hex) into fixed-size big-endian bytes
-    fn parse_uint_to_fixed_bytes(value: &Value, size_bytes: u8) -> Result<Vec<u8>, String> {
+    /// Parse unsigned integer (uintN) from JSON number or string into minimal big-endian bytes (with range check)
+    fn parse_uint_to_min_be(value: &Value, size_bytes: u8) -> Result<Vec<u8>, String> {
         let bits: u32 = (size_bytes as u32) * 8;
         // Parse into BigUint
         let big: BigUint = if let Some(u) = value.as_u64() {
@@ -259,21 +233,26 @@ impl Eip712Converter {
             return Err(format!("uint{} value out of range", bits));
         }
 
-        // To fixed-size BE bytes
-        let mut out = big.to_bytes_be();
-        if out.len() > size_bytes as usize {
-            return Err(format!("uint{} does not fit in {} bytes", bits, size_bytes));
+        // Minimal big-endian: 0 => [0x00], otherwise trim leading zeros
+        if big.is_zero() {
+            return Ok(vec![0u8]);
         }
-        if out.len() < size_bytes as usize {
-            let mut padded = vec![0u8; size_bytes as usize - out.len()];
-            padded.extend_from_slice(&out);
-            out = padded;
+        let mut out = big.to_bytes_be();
+        while out.len() > 1 && out[0] == 0 {
+            out.remove(0);
+        }
+        // Still ensure it could fit in size_bytes if needed by device constraints
+        if out.len() > size_bytes as usize {
+            return Err(format!(
+                "uint{} minimal encoding exceeds {} bytes",
+                bits, size_bytes
+            ));
         }
         Ok(out)
     }
 
-    /// Parse signed integer (intN) from JSON number or string (dec or optional -0x-hex) into fixed-size two's-complement big-endian bytes
-    fn parse_int_to_fixed_bytes(value: &Value, size_bytes: u8) -> Result<Vec<u8>, String> {
+    /// Parse signed integer (intN) from JSON number or string into minimal two's-complement big-endian bytes (with range check)
+    fn parse_int_to_min_be(value: &Value, size_bytes: u8) -> Result<Vec<u8>, String> {
         let bits: u32 = (size_bytes as u32) * 8;
         // Parse into BigInt
         let big: BigInt = if let Some(i) = value.as_i64() {
@@ -316,23 +295,31 @@ impl Eip712Converter {
         } else {
             big.to_biguint().unwrap()
         };
-
-        let mut out = as_uint.to_bytes_be();
-        if out.len() > size_bytes as usize {
-            // Allow equal by trimming leading zeros if any (shouldn't happen after range check)
-            return Err(format!("int{} does not fit in {} bytes", bits, size_bytes));
+        let mut full = as_uint.to_bytes_be();
+        // Left pad to at least 1 byte
+        if full.is_empty() {
+            full.push(0);
         }
-        if out.len() < size_bytes as usize {
-            let pad_byte = if big.sign() == Sign::Minus {
-                0xFF
-            } else {
-                0x00
-            };
-            let mut padded = vec![pad_byte; size_bytes as usize - out.len()];
-            padded.extend_from_slice(&out);
-            out = padded;
+        // Ensure we have at most size_bytes to start with (range already checked)
+        if full.len() > size_bytes as usize {
+            return Err(format!(
+                "int{} minimal encoding exceeds {} bytes",
+                bits, size_bytes
+            ));
         }
-        Ok(out)
+        // Trim redundant sign extension:
+        // For negative numbers, while first byte == 0xFF and next byte has MSB 1, drop first byte
+        // For non-negative, while first byte == 0x00 and next byte MSB 0, drop first byte
+        if big.sign() == Sign::Minus {
+            while full.len() > 1 && full[0] == 0xFF && (full[1] & 0x80) == 0x80 {
+                full.remove(0);
+            }
+        } else {
+            while full.len() > 1 && full[0] == 0x00 && (full[1] & 0x80) == 0x00 {
+                full.remove(0);
+            }
+        }
+        Ok(full)
     }
 
     /// Convert message data to struct implementation

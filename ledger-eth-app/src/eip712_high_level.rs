@@ -550,13 +550,35 @@ where
         // Convert message to struct implementation
         // First, send EIP712Domain implementation if defined in types
         if typed_data.types.contains_key("EIP712Domain") {
-            let domain_json = Eip712Converter::build_domain_json(&typed_data.domain);
-            let domain_impl = Eip712Converter::convert_message_to_implementation(
-                &domain_json,
-                "EIP712Domain",
-                &typed_data.types,
-            )
-            .map_err(|e| EthAppError::InvalidEip712Data(e))?;
+            // Some Ledger firmware expect a canonical EIP712Domain value order.
+            // Build the domain implementation explicitly in the order:
+            // name, version, chainId, verifyingContract (when present)
+            let mut domain_values: Vec<Eip712FieldValue> = Vec::new();
+
+            if let Some(name) = &typed_data.domain.name {
+                domain_values.push(Eip712FieldValue::from_string(name));
+            }
+            if let Some(version) = &typed_data.domain.version {
+                domain_values.push(Eip712FieldValue::from_string(version));
+            }
+            if let Some(chain_id) = typed_data.domain.chain_id {
+                // Encode as minimal big-endian for uint256
+                let chain_id_val = serde_json::Value::Number(chain_id.into());
+                let bytes = Eip712Converter::parse_uint_to_min_be(&chain_id_val, 32)
+                    .map_err(|e| EthAppError::InvalidEip712Data(e))?;
+                domain_values.push(Eip712FieldValue::from_bytes(bytes));
+            }
+            if let Some(addr) = &typed_data.domain.verifying_contract {
+                let addr_val = Eip712FieldValue::from_address_string(addr)
+                    .map_err(|e| EthAppError::InvalidEip712Data(e))?;
+                domain_values.push(addr_val);
+            }
+
+            let domain_impl = Eip712StructImplementation {
+                name: "EIP712Domain".to_string(),
+                values: domain_values,
+            };
+
             EthApp::send_struct_implementation(transport, &domain_impl).await?;
         }
 

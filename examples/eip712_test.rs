@@ -216,17 +216,28 @@ where
         }
     }
 
+      // Step 2.5: Activate EIP-712 filtering
+      println!("  🔍 Activating EIP-712 filtering...");
+      match eth_app.activate_filtering().await {
+          Ok(_) => println!("    ✅ Filtering activated successfully"),
+          Err(e) => {
+              eprintln!("    ❌ Filtering activation failed: {}", e);
+              eprintln!("    ⚠️  Continuing without filtering...");
+          }
+      }
+    
+
     // Step 3: Send EIP712Domain implementation (value order must match raw APDU sequence)
     // Raw APDU order: name, version, chainId, verifyingContract
     println!("  📥 Sending EIP712Domain implementation...");
     let domain_impl = Eip712StructImplementation::new("EIP712Domain".to_string())
-        .with_value(Eip712FieldValue::from_string("USD Coin")) // name - 第1个
-        .with_value(Eip712FieldValue::from_string("2")) // version - 第2个
-        .with_value(Eip712FieldValue::from_uint32(1)) // chainId - 第3个
+        .with_value(Eip712FieldValue::from_string("USD Coin")) // name 
+        .with_value(Eip712FieldValue::from_string("2")) // version
+        .with_value(Eip712FieldValue::from_uint32(1)) // chainId 
         .with_value(
             Eip712FieldValue::from_address_string("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
                 .unwrap(),
-        ); // verifyingContract - 第4个
+        ); // verifyingContract 
 
 
     println!("domain_impl: {:?}", domain_impl);
@@ -240,6 +251,8 @@ where
             return Ok(());
         }
     }
+
+  
 
     // Step 4: Send Permit implementation (value order must match raw APDU sequence)  
     // Raw APDU order: owner, spender, value, nonce, deadline

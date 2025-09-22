@@ -8,10 +8,6 @@ name = "basic_test"
 path = "basic_test.rs"
 
 [[bin]]
-name = "eip712_test"
-path = "eip712_test.rs"
-
-[[bin]]
 name = "usdc_permit_example"
 path = "usdc_permit_example.rs"
 

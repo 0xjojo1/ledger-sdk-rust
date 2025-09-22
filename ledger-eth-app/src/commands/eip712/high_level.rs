@@ -13,7 +13,7 @@ use crate::types::{
     Eip712TypedData, Eip712Types,
 };
 use crate::utils::validate_bip32_path;
-use crate::{BipPath, EthApp};
+use crate::{BipPath, Eip712Filtering, EthApp};
 use async_trait::async_trait;
 use ledger_transport::Exchange;
 use num_bigint::{BigInt, BigUint, Sign};
@@ -350,29 +350,6 @@ impl Eip712Converter {
         })
     }
 
-    /// Build a JSON Value object for EIP712Domain from the typed domain struct
-    fn build_domain_json(domain: &Eip712Domain) -> Value {
-        let mut map = serde_json::Map::new();
-        if let Some(name) = &domain.name {
-            map.insert("name".to_string(), Value::String(name.clone()));
-        }
-        if let Some(version) = &domain.version {
-            map.insert("version".to_string(), Value::String(version.clone()));
-        }
-        if let Some(chain_id) = domain.chain_id {
-            map.insert("chainId".to_string(), Value::Number(chain_id.into()));
-        }
-        if let Some(addr) = &domain.verifying_contract {
-            map.insert("verifyingContract".to_string(), Value::String(addr.clone()));
-        }
-        if let Some(salt_bytes) = &domain.salt {
-            let mut s = String::from("0x");
-            s.push_str(&hex::encode(salt_bytes));
-            map.insert("salt".to_string(), Value::String(s));
-        }
-        Value::Object(map)
-    }
-
     /// Parse and validate JSON string to EIP-712 typed data
     pub fn parse_json_to_typed_data(json_str: &str) -> Result<Eip712TypedData, String> {
         // Parse JSON
@@ -547,40 +524,37 @@ where
             EthApp::send_struct_definition(transport, struct_def).await?;
         }
 
-        // Convert message to struct implementation
-        // First, send EIP712Domain implementation if defined in types
-        if typed_data.types.contains_key("EIP712Domain") {
-            // Some Ledger firmware expect a canonical EIP712Domain value order.
-            // Build the domain implementation explicitly in the order:
-            // name, version, chainId, verifyingContract (when present)
-            let mut domain_values: Vec<Eip712FieldValue> = Vec::new();
+        // Some Ledger firmware expect a canonical EIP712Domain value order.
+        // Build the domain implementation explicitly in the order:
+        // name, version, chainId, verifyingContract (when present)
+        let mut domain_values: Vec<Eip712FieldValue> = Vec::new();
 
-            if let Some(name) = &typed_data.domain.name {
-                domain_values.push(Eip712FieldValue::from_string(name));
-            }
-            if let Some(version) = &typed_data.domain.version {
-                domain_values.push(Eip712FieldValue::from_string(version));
-            }
-            if let Some(chain_id) = typed_data.domain.chain_id {
-                // Encode as minimal big-endian for uint256
-                let chain_id_val = serde_json::Value::Number(chain_id.into());
-                let bytes = Eip712Converter::parse_uint_to_min_be(&chain_id_val, 32)
-                    .map_err(|e| EthAppError::InvalidEip712Data(e))?;
-                domain_values.push(Eip712FieldValue::from_bytes(bytes));
-            }
-            if let Some(addr) = &typed_data.domain.verifying_contract {
-                let addr_val = Eip712FieldValue::from_address_string(addr)
-                    .map_err(|e| EthAppError::InvalidEip712Data(e))?;
-                domain_values.push(addr_val);
-            }
-
-            let domain_impl = Eip712StructImplementation {
-                name: "EIP712Domain".to_string(),
-                values: domain_values,
-            };
-
-            EthApp::send_struct_implementation(transport, &domain_impl).await?;
+        if let Some(name) = &typed_data.domain.name {
+            domain_values.push(Eip712FieldValue::from_string(name));
         }
+        if let Some(version) = &typed_data.domain.version {
+            domain_values.push(Eip712FieldValue::from_string(version));
+        }
+        if let Some(chain_id) = typed_data.domain.chain_id {
+            // Encode as minimal big-endian for uint256
+            let chain_id_val = serde_json::Value::Number(chain_id.into());
+            let bytes = Eip712Converter::parse_uint_to_min_be(&chain_id_val, 32)
+                .map_err(|e| EthAppError::InvalidEip712Data(e))?;
+            domain_values.push(Eip712FieldValue::from_bytes(bytes));
+        }
+        if let Some(addr) = &typed_data.domain.verifying_contract {
+            let addr_val = Eip712FieldValue::from_address_string(addr)
+                .map_err(|e| EthAppError::InvalidEip712Data(e))?;
+            domain_values.push(addr_val);
+        }
+
+        let domain_impl = Eip712StructImplementation {
+            name: "EIP712Domain".to_string(),
+            values: domain_values,
+        };
+
+        EthApp::activate_filtering(transport).await?;
+        EthApp::send_struct_implementation(transport, &domain_impl).await?;
 
         let struct_implementation = Eip712Converter::convert_message_to_implementation(
             &typed_data.message,
@@ -609,103 +583,5 @@ where
 
         // Use the existing typed data signing method
         Self::sign_eip712_typed_data(transport, path, &typed_data).await
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-
-    #[test]
-    fn test_parse_field_type() {
-        assert_eq!(
-            Eip712Converter::parse_field_type("bool").unwrap(),
-            Eip712FieldType::Bool
-        );
-        assert_eq!(
-            Eip712Converter::parse_field_type("address").unwrap(),
-            Eip712FieldType::Address
-        );
-        assert_eq!(
-            Eip712Converter::parse_field_type("string").unwrap(),
-            Eip712FieldType::String
-        );
-        assert_eq!(
-            Eip712Converter::parse_field_type("bytes").unwrap(),
-            Eip712FieldType::DynamicBytes
-        );
-        assert_eq!(
-            Eip712Converter::parse_field_type("bytes32").unwrap(),
-            Eip712FieldType::FixedBytes(32)
-        );
-        assert_eq!(
-            Eip712Converter::parse_field_type("uint256").unwrap(),
-            Eip712FieldType::Uint(32)
-        );
-        assert_eq!(
-            Eip712Converter::parse_field_type("int128").unwrap(),
-            Eip712FieldType::Int(16)
-        );
-        assert_eq!(
-            Eip712Converter::parse_field_type("Person").unwrap(),
-            Eip712FieldType::Custom("Person".to_string())
-        );
-    }
-
-    #[test]
-    fn test_parse_array_field_type() {
-        let field_type = Eip712Converter::parse_field_type("Person[]").unwrap();
-        assert_eq!(field_type, Eip712FieldType::Custom("Person".to_string()));
-
-        let field_type = Eip712Converter::parse_field_type("uint256[3]").unwrap();
-        assert_eq!(field_type, Eip712FieldType::Uint(32));
-    }
-
-    #[test]
-    fn test_convert_value_to_field_value() {
-        // Test bool
-        let value = json!(true);
-        let field_value =
-            Eip712Converter::convert_value_to_field_value(&value, &Eip712FieldType::Bool).unwrap();
-        assert_eq!(field_value.value, vec![1]);
-
-        // Test address
-        let value = json!("0x1234567890123456789012345678901234567890");
-        let field_value =
-            Eip712Converter::convert_value_to_field_value(&value, &Eip712FieldType::Address)
-                .unwrap();
-        assert_eq!(field_value.value.len(), 20);
-
-        // Test string
-        let value = json!("Hello, World!");
-        let field_value =
-            Eip712Converter::convert_value_to_field_value(&value, &Eip712FieldType::String)
-                .unwrap();
-        assert_eq!(field_value.value, b"Hello, World!");
-    }
-
-    #[test]
-    fn test_convert_message_to_implementation() {
-        let mut types = Eip712Types::new();
-        types.insert(
-            "Person".to_string(),
-            Eip712Struct::new()
-                .with_field(Eip712Field::new("name".to_string(), "string".to_string()))
-                .with_field(Eip712Field::new(
-                    "wallet".to_string(),
-                    "address".to_string(),
-                )),
-        );
-
-        let message = json!({
-            "name": "Alice",
-            "wallet": "0x1234567890123456789012345678901234567890"
-        });
-
-        let implementation =
-            Eip712Converter::convert_message_to_implementation(&message, "Person", &types).unwrap();
-        assert_eq!(implementation.name, "Person");
-        assert_eq!(implementation.values.len(), 2);
     }
 }

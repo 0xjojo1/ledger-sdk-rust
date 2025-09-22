@@ -23,14 +23,12 @@ use ledger_transport::Exchange;
 
 // Re-export all public types and traits
 pub mod commands;
-pub mod eip712_high_level;
 pub mod errors;
 pub mod instructions;
 pub mod types;
 pub mod utils;
 
 pub use commands::*;
-pub use eip712_high_level::*;
 pub use errors::*;
 pub use types::*;
 

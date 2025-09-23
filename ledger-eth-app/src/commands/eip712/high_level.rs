@@ -82,8 +82,7 @@ impl Eip712Converter {
             "bytes" => Ok(Eip712FieldType::DynamicBytes),
             _ => {
                 // Handle fixed-size bytes (e.g., "bytes32")
-                if type_str.starts_with("bytes") {
-                    let size_str = &type_str[5..];
+                if let Some(size_str) = type_str.strip_prefix("bytes") {
                     if let Ok(size) = size_str.parse::<u8>() {
                         if size > 0 && size <= 32 {
                             return Ok(Eip712FieldType::FixedBytes(size));
@@ -93,8 +92,7 @@ impl Eip712Converter {
                 }
 
                 // Handle integer types (e.g., "uint256", "int128")
-                if type_str.starts_with("uint") {
-                    let size_str = &type_str[4..];
+                if let Some(size_str) = type_str.strip_prefix("uint") {
                     if let Ok(size) = size_str.parse::<u16>() {
                         if size > 0 && size <= 256 && size % 8 == 0 {
                             return Ok(Eip712FieldType::Uint((size / 8) as u8));
@@ -103,8 +101,7 @@ impl Eip712Converter {
                     return Err(format!("Invalid uint size: {}", size_str));
                 }
 
-                if type_str.starts_with("int") {
-                    let size_str = &type_str[3..];
+                if let Some(size_str) = type_str.strip_prefix("int") {
                     if let Ok(size) = size_str.parse::<u16>() {
                         if size > 0 && size <= 256 && size % 8 == 0 {
                             return Ok(Eip712FieldType::Int((size / 8) as u8));
@@ -290,8 +287,7 @@ impl Eip712Converter {
         let modulus = one << bits;
         let as_uint = if big.sign() == Sign::Minus {
             let abs = (-&big).to_biguint().unwrap();
-            let val = (&modulus - abs) % &modulus;
-            val
+            (&modulus - abs) % &modulus
         } else {
             big.to_biguint().unwrap()
         };
@@ -515,7 +511,7 @@ where
 
         // Convert high-level types to low-level struct definitions
         let struct_definitions = Eip712Converter::convert_types_to_definitions(&typed_data.types)
-            .map_err(|e| EthAppError::InvalidEip712Data(e))?;
+            .map_err(EthAppError::InvalidEip712Data)?;
 
         // Send all struct definitions in deterministic order: alphabetical by name
         let mut defs_sorted = struct_definitions.clone();
@@ -539,12 +535,12 @@ where
             // Encode as minimal big-endian for uint256
             let chain_id_val = serde_json::Value::Number(chain_id.into());
             let bytes = Eip712Converter::parse_uint_to_min_be(&chain_id_val, 32)
-                .map_err(|e| EthAppError::InvalidEip712Data(e))?;
+                .map_err(EthAppError::InvalidEip712Data)?;
             domain_values.push(Eip712FieldValue::from_bytes(bytes));
         }
         if let Some(addr) = &typed_data.domain.verifying_contract {
             let addr_val = Eip712FieldValue::from_address_string(addr)
-                .map_err(|e| EthAppError::InvalidEip712Data(e))?;
+                .map_err(EthAppError::InvalidEip712Data)?;
             domain_values.push(addr_val);
         }
 
@@ -561,7 +557,7 @@ where
             &typed_data.primary_type,
             &typed_data.types,
         )
-        .map_err(|e| EthAppError::InvalidEip712Data(e))?;
+        .map_err(EthAppError::InvalidEip712Data)?;
 
         // Send message struct implementation
         EthApp::send_struct_implementation(transport, &struct_implementation).await?;
@@ -577,7 +573,7 @@ where
     ) -> EthAppResult<crate::types::Signature, E::Error> {
         // Parse and validate JSON string
         let typed_data = Eip712Converter::parse_json_to_typed_data(json_str)
-            .map_err(|e| EthAppError::InvalidEip712Data(e))?;
+            .map_err(EthAppError::InvalidEip712Data)?;
 
         println!("typed_data: {:?}", &typed_data);
 

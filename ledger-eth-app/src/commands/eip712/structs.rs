@@ -54,7 +54,7 @@ where
             .map_err(|e| EthAppError::Transport(e.into()))?;
 
         <EthApp as AppExt<E>>::handle_response_error(&response)
-            .map_err(|e| crate::errors::map_ledger_error(e))?;
+            .map_err(crate::errors::map_ledger_error)?;
 
         // Send each field definition
         for field in &struct_def.fields {
@@ -74,7 +74,7 @@ where
                 .map_err(|e| EthAppError::Transport(e.into()))?;
 
             <EthApp as AppExt<E>>::handle_response_error(&response)
-                .map_err(|e| crate::errors::map_ledger_error(e))?;
+                .map_err(crate::errors::map_ledger_error)?;
         }
 
         Ok(())
@@ -122,10 +122,10 @@ where
             .map_err(|e| EthAppError::Transport(e.into()))?;
 
         <EthApp as AppExt<E>>::handle_response_error(&response)
-            .map_err(|e| crate::errors::map_ledger_error(e))?;
+            .map_err(crate::errors::map_ledger_error)?;
 
         // Send each field value as FIELD type
-        for (_, value) in struct_impl.values.iter().enumerate() {
+        for value in struct_impl.values.iter() {
             // Encode field value with a 2-byte big-endian length prefix
             let mut buffer = Vec::with_capacity(2 + value.value.len());
             buffer.extend_from_slice(&(value.value.len() as u16).to_be_bytes());
@@ -158,7 +158,7 @@ where
                     .map_err(|e| EthAppError::Transport(e.into()))?;
 
                 <EthApp as AppExt<E>>::handle_response_error(&response)
-                    .map_err(|e| EthAppError::Transport(e))?;
+                    .map_err(EthAppError::Transport)?;
 
                 offset = end;
             }
@@ -181,8 +181,7 @@ where
             .await
             .map_err(|e| EthAppError::Transport(e.into()))?;
 
-        <EthApp as AppExt<E>>::handle_response_error(&response)
-            .map_err(|e| EthAppError::Transport(e))?;
+        <EthApp as AppExt<E>>::handle_response_error(&response).map_err(EthAppError::Transport)?;
 
         Ok(())
     }

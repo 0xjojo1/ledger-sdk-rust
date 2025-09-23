@@ -65,8 +65,7 @@ where
             .await
             .map_err(|e| EthAppError::Transport(e.into()))?;
 
-        <EthApp as AppExt<E>>::handle_response_error(&response)
-            .map_err(|e| EthAppError::Transport(e))?;
+        <EthApp as AppExt<E>>::handle_response_error(&response).map_err(EthAppError::Transport)?;
 
         // Parse signature from response
         parse_signature_response::<E::Error>(response.data())
@@ -137,8 +136,7 @@ where
             .await
             .map_err(|e| EthAppError::Transport(e.into()))?;
 
-        <EthApp as AppExt<E>>::handle_response_error(&response)
-            .map_err(|e| EthAppError::Transport(e))?;
+        <EthApp as AppExt<E>>::handle_response_error(&response).map_err(EthAppError::Transport)?;
 
         // Parse signature from response
         parse_signature_response::<E::Error>(response.data())

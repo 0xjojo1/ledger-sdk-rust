@@ -58,8 +58,7 @@ where
             .await
             .map_err(|e| EthAppError::Transport(e.into()))?;
 
-        <EthApp as AppExt<E>>::handle_response_error(&response)
-            .map_err(|e| EthAppError::Transport(e))?;
+        <EthApp as AppExt<E>>::handle_response_error(&response).map_err(EthAppError::Transport)?;
 
         Ok(())
     }
@@ -78,8 +77,7 @@ where
             .await
             .map_err(|e| EthAppError::Transport(e.into()))?;
 
-        <EthApp as AppExt<E>>::handle_response_error(&response)
-            .map_err(|e| EthAppError::Transport(e))?;
+        <EthApp as AppExt<E>>::handle_response_error(&response).map_err(EthAppError::Transport)?;
 
         Ok(())
     }

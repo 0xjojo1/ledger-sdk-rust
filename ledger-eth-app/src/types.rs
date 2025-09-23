@@ -42,8 +42,8 @@ impl BipPath {
                 continue;
             }
 
-            let (number_str, is_hardened) = if component.ends_with("'") {
-                (&component[..component.len() - 1], true)
+            let (number_str, is_hardened) = if let Some(stripped) = component.strip_suffix("'") {
+                (stripped, true)
             } else {
                 (component, false)
             };
@@ -625,8 +625,8 @@ impl Eip712FieldValue {
     /// Create from an address string (hex format)
     pub fn from_address_string(address: &str) -> Result<Self, String> {
         // Remove 0x prefix if present
-        let hex_str = if address.starts_with("0x") {
-            &address[2..]
+        let hex_str = if let Some(stripped) = address.strip_prefix("0x") {
+            stripped
         } else {
             address
         };
@@ -806,6 +806,12 @@ impl Eip712Domain {
     }
 }
 
+impl Default for Eip712Domain {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// EIP-712 field definition for high-level API
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Eip712Field {
@@ -839,6 +845,12 @@ impl Eip712Struct {
     pub fn with_field(mut self, field: Eip712Field) -> Self {
         self.fields.push(field);
         self
+    }
+}
+
+impl Default for Eip712Struct {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

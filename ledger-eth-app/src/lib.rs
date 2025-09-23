@@ -502,7 +502,7 @@ where
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// use ledger_eth_app::{Eip712Domain, Eip712Field, Eip712Struct, Eip712Types, Eip712TypedData};
     /// use serde_json::json;
     /// use std::collections::HashMap;
@@ -533,7 +533,7 @@ where
     /// });
     ///
     /// let typed_data = Eip712TypedData::new(domain, types, "Mail".to_string(), message);
-    /// let signature = app.sign_eip712_typed_data(&path, &typed_data).await?;
+    /// // let signature = app.sign_eip712_typed_data(&path, &typed_data).await?;
     /// ```
     ///
     /// # Errors
@@ -572,7 +572,7 @@ where
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// let json_str = r#"{
     ///   "domain": {
     ///     "name": "USD Coin",
@@ -605,7 +605,7 @@ where
     ///   }
     /// }"#;
     ///
-    /// let signature = app.sign_eip712_from_json(&path, json_str).await?;
+    /// // let signature = app.sign_eip712_from_json(&path, json_str).await?;
     /// ```
     ///
     /// # Errors

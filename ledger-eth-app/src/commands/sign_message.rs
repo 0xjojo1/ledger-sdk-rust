@@ -91,8 +91,7 @@ where
             .await
             .map_err(|e| EthAppError::Transport(e.into()))?;
 
-        <EthApp as AppExt<E>>::handle_response_error(&response)
-            .map_err(|e| EthAppError::Transport(e))?;
+        <EthApp as AppExt<E>>::handle_response_error(&response).map_err(EthAppError::Transport)?;
 
         // Send remaining chunks
         for chunk in remaining_chunks {
@@ -110,7 +109,7 @@ where
                 .map_err(|e| EthAppError::Transport(e.into()))?;
 
             <EthApp as AppExt<E>>::handle_response_error_signature(&response)
-                .map_err(|e| EthAppError::Transport(e))?;
+                .map_err(EthAppError::Transport)?;
         }
 
         // Parse signature from final response

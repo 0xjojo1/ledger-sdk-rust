@@ -121,8 +121,8 @@ pub type EthAppResult<T, E> = Result<T, EthAppError<E>>;
 pub fn map_ledger_error<E: std::error::Error>(err: LedgerAppError<E>) -> EthAppError<E> {
     match err {
         // User cancel / security status not satisfied
-        LedgerAppError::AppSpecific(sw, _) if sw == 0x6982 => EthAppError::UserRejected,
-        LedgerAppError::Unknown(sw) if sw == 0x6982 => EthAppError::UserRejected,
+        LedgerAppError::AppSpecific(0x6982, _) => EthAppError::UserRejected,
+        LedgerAppError::Unknown(0x6982) => EthAppError::UserRejected,
 
         // Map known ETH app status words to descriptions
         LedgerAppError::AppSpecific(sw, _) | LedgerAppError::Unknown(sw) => {

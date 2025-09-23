@@ -24,7 +24,7 @@ pub enum TransactionMode {
 }
 
 impl TransactionMode {
-    fn to_p2(&self) -> u8 {
+    fn to_p2(self) -> u8 {
         match self {
             TransactionMode::ProcessAndStart => p2_sign_transaction::PROCESS_AND_START,
             TransactionMode::StoreOnly => p2_sign_transaction::STORE_ONLY,
@@ -105,7 +105,7 @@ where
                     .map_err(|e| EthAppError::Transport(e.into()))?;
 
                 <EthApp as AppExt<E>>::handle_response_error_signature(&response)
-                    .map_err(|e| EthAppError::Transport(e))?;
+                    .map_err(EthAppError::Transport)?;
 
                 let signature = parse_signature_response::<E::Error>(response.data())?;
                 return Ok(Some(signature));
@@ -174,14 +174,8 @@ impl EthApp {
             .await
             .map_err(|e| EthAppError::Transport(e.into()))?;
 
-        // For store-only mode, we don't expect a signature in any response
-        if mode == TransactionMode::StoreOnly {
-            <EthApp as AppExt<E>>::handle_response_error(&response)
-                .map_err(|e| EthAppError::Transport(e))?;
-        } else {
-            <EthApp as AppExt<E>>::handle_response_error(&response)
-                .map_err(|e| EthAppError::Transport(e))?;
-        }
+        // Handle response (no signature expected yet at this stage)
+        <EthApp as AppExt<E>>::handle_response_error(&response).map_err(EthAppError::Transport)?;
 
         // Send remaining chunks
         for (i, chunk) in remaining_chunks.iter().enumerate() {
@@ -201,14 +195,14 @@ impl EthApp {
             // Only check for signature on the last chunk if not store-only mode
             if mode == TransactionMode::StoreOnly {
                 <EthApp as AppExt<E>>::handle_response_error(&response)
-                    .map_err(|e| EthAppError::Transport(e))?;
+                    .map_err(EthAppError::Transport)?;
             } else if i == remaining_chunks.len() - 1 {
                 // Last chunk - expect signature
                 <EthApp as AppExt<E>>::handle_response_error_signature(&response)
-                    .map_err(|e| EthAppError::Transport(e))?;
+                    .map_err(EthAppError::Transport)?;
             } else {
                 <EthApp as AppExt<E>>::handle_response_error(&response)
-                    .map_err(|e| EthAppError::Transport(e))?;
+                    .map_err(EthAppError::Transport)?;
             }
         }
 

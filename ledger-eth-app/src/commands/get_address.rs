@@ -82,8 +82,7 @@ where
             .map_err(|e| EthAppError::Transport(e.into()))?;
 
         // Handle APDU response
-        <EthApp as AppExt<E>>::handle_response_error(&response)
-            .map_err(|e| EthAppError::Transport(e))?;
+        <EthApp as AppExt<E>>::handle_response_error(&response).map_err(EthAppError::Transport)?;
 
         // Parse response data
         parse_get_address_response::<E::Error>(response.data(), params.return_chain_code)

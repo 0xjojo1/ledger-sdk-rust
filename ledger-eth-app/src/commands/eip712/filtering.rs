@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! EIP-712 filtering APDU implementation
+//! EIP-712 filtering functionality
+//!
+//! This module contains the EIP-712 filtering APDU command implementation (0x1E).
 
 use async_trait::async_trait;
 use ledger_device_base::{App, AppExt};
@@ -9,8 +11,10 @@ use ledger_transport::{APDUCommand, Exchange};
 use crate::commands::eip712::encoding::encode_filter_params;
 use crate::errors::{EthAppError, EthAppResult};
 use crate::instructions::{ins, p1_eip712_filtering, p2_eip712_filtering};
-use crate::types::Eip712FilterParams;
 use crate::EthApp;
+
+// Re-export filtering types from the main types module
+pub use crate::types::{Eip712FilterParams, Eip712FilterType};
 
 /// EIP-712 filtering trait
 #[async_trait]

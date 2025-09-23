@@ -2,6 +2,13 @@
 name = "ledger-transport-hid"
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
+description = "HID transport implementation for Ledger device communication"
+readme = "../README.md"
+repository = "https://github.com/0xjojo1/ledger-sdk-rust"
+keywords = ["ledger", "hid", "transport", "hardware-wallet", "cryptocurrency"]
+categories = ["cryptography", "hardware-support"]
+authors = ["0xjojo1 <jojomemo5129@gmail.com>"]
 
 [dependencies]
 libc = "0.2"

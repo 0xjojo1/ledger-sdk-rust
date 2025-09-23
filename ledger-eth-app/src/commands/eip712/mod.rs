@@ -8,13 +8,11 @@ pub mod encoding;
 pub mod filtering;
 pub mod high_level;
 pub mod signing;
-pub mod struct_definition;
-pub mod struct_implementation;
+pub mod structs;
 
 // Re-export all public traits and types
 pub use encoding::*;
 pub use filtering::*;
 pub use high_level::*;
 pub use signing::*;
-pub use struct_definition::*;
-pub use struct_implementation::*;
+pub use structs::*;

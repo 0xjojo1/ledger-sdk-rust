@@ -3,9 +3,19 @@ name = "ledger-eth-app"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
-description = "Ledger Ethereum app interaction helpers built on ledger-transport and ledger-device-base"
+description = "Ledger Ethereum app interaction helpers with EIP-712 support"
 readme = "../README.md"
-repository = "https://github.com/your-org/ledger-sdk-rust"
+repository = "https://github.com/0xjojo1/ledger-sdk-rust"
+keywords = [
+    "ledger",
+    "ethereum",
+    "eip712",
+    "hardware-wallet",
+    "cryptocurrency",
+    "web3",
+]
+categories = ["cryptography", "hardware-support", "web-programming"]
+authors = ["0xjojo1 <jojomemo5129@gmail.com>"]
 
 [dependencies]
 async-trait = "0.1"

@@ -1,0 +1,116 @@
+name: Publish to crates.io
+
+on:
+  release:
+    types: [published]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish:
+    name: Publish crates
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+          override: true
+
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v3
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run cargo fmt
+        run: cargo fmt --all -- --check
+
+      - name: Run cargo clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Run tests
+        run: cargo test --all
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Update versions in Cargo.toml files
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          # Remove 'v' prefix if present
+          VERSION=${VERSION#v}
+
+          # Update all Cargo.toml files
+          find . -name "Cargo.toml" -not -path "./target/*" -not -path "./examples/*" | while read file; do
+            sed -i "s/^version = \".*\"/version = \"$VERSION\"/" "$file"
+          done
+
+      - name: Update dependencies to use crates.io versions
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          VERSION=${VERSION#v}
+
+          # Update ledger-transport dependencies
+          sed -i "s|ledger-apdu = { path = \"../ledger-apdu\" }|ledger-apdu = \"$VERSION\"|" ledger-transport/Cargo.toml
+
+          # Update ledger-device-base dependencies
+          sed -i "s|ledger-transport = { path = \"../ledger-transport\" }|ledger-transport = \"$VERSION\"|" ledger-device-base/Cargo.toml
+
+          # Update ledger-transport-hid dependencies
+          sed -i "s|ledger-transport = { path = \"../ledger-transport\" }|ledger-transport = \"$VERSION\"|" ledger-transport-hid/Cargo.toml
+
+          # Update ledger-eth-app dependencies
+          sed -i "s|ledger-transport = { path = \"../ledger-transport\" }|ledger-transport = \"$VERSION\"|" ledger-eth-app/Cargo.toml
+          sed -i "s|ledger-device-base = { path = \"../ledger-device-base\" }|ledger-device-base = \"$VERSION\"|" ledger-eth-app/Cargo.toml
+
+      - name: Login to crates.io
+        run: echo "${{ secrets.CRATES_IO_TOKEN }}" | cargo login
+
+      - name: Publish ledger-apdu
+        run: cargo publish -p ledger-apdu --no-verify
+
+      - name: Publish ledger-transport
+        run: cargo publish -p ledger-transport --no-verify
+
+      - name: Publish ledger-device-base
+        run: cargo publish -p ledger-device-base --no-verify
+
+      - name: Publish ledger-transport-hid
+        run: cargo publish -p ledger-transport-hid --no-verify
+
+      - name: Publish ledger-eth-app
+        run: cargo publish -p ledger-eth-app --no-verify
+
+      - name: Create summary
+        run: |
+          echo "## 🚀 Published Crates" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Successfully published the following crates to crates.io:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- [ledger-apdu](https://crates.io/crates/ledger-apdu) v${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- [ledger-transport](https://crates.io/crates/ledger-transport) v${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- [ledger-device-base](https://crates.io/crates/ledger-device-base) v${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- [ledger-transport-hid](https://crates.io/crates/ledger-transport-hid) v${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- [ledger-eth-app](https://crates.io/crates/ledger-eth-app) v${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All crates are now available for use in other projects!" >> $GITHUB_STEP_SUMMARY

@@ -8,3 +8,10 @@ members = [
     "examples",
 ]
 resolver = "3"
+default-members = [
+    "ledger-apdu",
+    "ledger-transport",
+    "ledger-transport-hid",
+    "ledger-device-base",
+    "ledger-eth-app",
+]

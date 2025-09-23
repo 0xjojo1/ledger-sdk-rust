@@ -5,8 +5,8 @@
 //! This module contains the EIP-712 signing implementations.
 
 use async_trait::async_trait;
-use ledger_device_base::{App, AppExt};
-use ledger_transport::{APDUCommand, Exchange};
+use ledger_sdk_device_base::{App, AppExt};
+use ledger_sdk_transport::{APDUCommand, Exchange};
 
 use crate::errors::{EthAppError, EthAppResult};
 use crate::instructions::{ins, length, p1_sign_eip712, p2_sign_eip712};

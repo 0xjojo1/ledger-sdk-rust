@@ -1,6 +1,6 @@
 [package]
-name = "ledger-transport-hid"
-version = "0.1.0"
+name = "ledger-sdk-transport-hid"
+version = "0.0.1"
 edition = "2021"
 license = "Apache-2.0"
 description = "HID transport implementation for Ledger device communication"
@@ -18,7 +18,7 @@ thiserror = "2.0.16"
 hex = "0.4"
 log = "0.4"
 
-ledger-transport = { path = "../ledger-transport" }
+ledger-sdk-transport = "0.0.1"
 hidapi = { version = "2.6.1", features = [
     "linux-static-hidraw",
 ], default-features = false }

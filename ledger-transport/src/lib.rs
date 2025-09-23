@@ -1,7 +1,7 @@
 use std::ops::Deref;
 
 pub use async_trait::async_trait;
-pub use ledger_apdu::{APDUAnswer, APDUCommand, APDUErrorCode};
+pub use ledger_sdk_apdu::{APDUAnswer, APDUCommand, APDUErrorCode};
 
 /// Use to talk to the ledger device
 #[async_trait]

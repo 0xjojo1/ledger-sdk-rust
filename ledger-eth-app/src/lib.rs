@@ -18,8 +18,8 @@
 //!
 
 use async_trait::async_trait;
-use ledger_device_base::App;
-use ledger_transport::Exchange;
+use ledger_sdk_device_base::App;
+use ledger_sdk_transport::Exchange;
 
 // Re-export all public types and traits
 pub mod commands;

@@ -26,8 +26,8 @@ Add the desired crates to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-ledger-eth-app = "0.1.0"
-ledger-transport-hid = "0.1.0"
+ledger-sdk-eth-app = "0.0.1"
+ledger-sdk-transport-hid = "0.0.1"
 ```
 
 ## Quick Start
@@ -35,9 +35,9 @@ ledger-transport-hid = "0.1.0"
 ### Basic Ethereum Operations
 
 ```rust
-use ledger_eth_app::EthApp;
-use ledger_transport_hid::TransportNativeHID;
-use ledger_eth_app::types::BipPath;
+use ledger_sdk_eth_app::EthApp;
+use ledger_sdk_transport_hid::TransportNativeHID;
+use ledger_sdk_eth_app::types::BipPath;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -59,8 +59,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### EIP-712 Typed Data Signing
 
 ```rust
-use ledger_eth_app::EthApp;
-use ledger_eth_app::commands::eip712::SignEip712TypedData;
+use ledger_sdk_eth_app::EthApp;
+use ledger_sdk_eth_app::commands::eip712::SignEip712TypedData;
 use serde_json::json;
 
 #[tokio::main]

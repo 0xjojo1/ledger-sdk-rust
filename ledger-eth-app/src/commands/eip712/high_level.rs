@@ -15,7 +15,7 @@ use crate::types::{
 use crate::utils::validate_bip32_path;
 use crate::{BipPath, Eip712Filtering, EthApp};
 use async_trait::async_trait;
-use ledger_transport::Exchange;
+use ledger_sdk_transport::Exchange;
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::{One, Zero};
 use serde_json::{from_str, Value};

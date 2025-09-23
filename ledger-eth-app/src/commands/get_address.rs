@@ -3,8 +3,8 @@
 //! GET ETH PUBLIC ADDRESS command implementation
 
 use async_trait::async_trait;
-use ledger_device_base::{App, AppExt};
-use ledger_transport::{APDUCommand, Exchange};
+use ledger_sdk_device_base::{App, AppExt};
+use ledger_sdk_transport::{APDUCommand, Exchange};
 
 use crate::errors::{EthAppError, EthAppResult};
 use crate::instructions::{ins, p1_get_address, p2_get_address};

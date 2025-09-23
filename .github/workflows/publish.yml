@@ -76,36 +76,36 @@ jobs:
           VERSION="${{ steps.version.outputs.VERSION }}"
           VERSION=${VERSION#v}
 
-          # Update ledger-transport dependencies
-          sed -i "s|ledger-apdu = { path = \"../ledger-apdu\" }|ledger-apdu = \"$VERSION\"|" ledger-transport/Cargo.toml
+          # Update ledger-sdk-transport dependencies
+          sed -i "s|ledger-sdk-apdu = { path = \"../ledger-apdu\" }|ledger-sdk-apdu = \"$VERSION\"|" ledger-transport/Cargo.toml
 
-          # Update ledger-device-base dependencies
-          sed -i "s|ledger-transport = { path = \"../ledger-transport\" }|ledger-transport = \"$VERSION\"|" ledger-device-base/Cargo.toml
+          # Update ledger-sdk-device-base dependencies
+          sed -i "s|ledger-sdk-transport = { path = \"../ledger-transport\" }|ledger-sdk-transport = \"$VERSION\"|" ledger-device-base/Cargo.toml
 
-          # Update ledger-transport-hid dependencies
-          sed -i "s|ledger-transport = { path = \"../ledger-transport\" }|ledger-transport = \"$VERSION\"|" ledger-transport-hid/Cargo.toml
+          # Update ledger-sdk-transport-hid dependencies
+          sed -i "s|ledger-sdk-transport = { path = \"../ledger-transport\" }|ledger-sdk-transport = \"$VERSION\"|" ledger-transport-hid/Cargo.toml
 
-          # Update ledger-eth-app dependencies
-          sed -i "s|ledger-transport = { path = \"../ledger-transport\" }|ledger-transport = \"$VERSION\"|" ledger-eth-app/Cargo.toml
-          sed -i "s|ledger-device-base = { path = \"../ledger-device-base\" }|ledger-device-base = \"$VERSION\"|" ledger-eth-app/Cargo.toml
+          # Update ledger-sdk-eth-app dependencies
+          sed -i "s|ledger-sdk-transport = { path = \"../ledger-transport\" }|ledger-sdk-transport = \"$VERSION\"|" ledger-eth-app/Cargo.toml
+          sed -i "s|ledger-sdk-device-base = { path = \"../ledger-device-base\" }|ledger-sdk-device-base = \"$VERSION\"|" ledger-eth-app/Cargo.toml
 
       - name: Login to crates.io
         run: echo "${{ secrets.CRATES_IO_TOKEN }}" | cargo login
 
-      - name: Publish ledger-apdu
-        run: cargo publish -p ledger-apdu --no-verify
+      - name: Publish ledger-sdk-apdu
+        run: cargo publish -p ledger-sdk-apdu --no-verify
 
-      - name: Publish ledger-transport
-        run: cargo publish -p ledger-transport --no-verify
+      - name: Publish ledger-sdk-transport
+        run: cargo publish -p ledger-sdk-transport --no-verify
 
-      - name: Publish ledger-device-base
-        run: cargo publish -p ledger-device-base --no-verify
+      - name: Publish ledger-sdk-device-base
+        run: cargo publish -p ledger-sdk-device-base --no-verify
 
-      - name: Publish ledger-transport-hid
-        run: cargo publish -p ledger-transport-hid --no-verify
+      - name: Publish ledger-sdk-transport-hid
+        run: cargo publish -p ledger-sdk-transport-hid --no-verify
 
-      - name: Publish ledger-eth-app
-        run: cargo publish -p ledger-eth-app --no-verify
+      - name: Publish ledger-sdk-eth-app
+        run: cargo publish -p ledger-sdk-eth-app --no-verify
 
       - name: Create summary
         run: |

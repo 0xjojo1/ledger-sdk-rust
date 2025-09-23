@@ -3,7 +3,7 @@ use std::str;
 
 use async_trait::async_trait;
 pub use errors::*;
-use ledger_transport::{APDUAnswer, APDUCommand, APDUErrorCode, Exchange};
+use ledger_sdk_transport::{APDUAnswer, APDUCommand, APDUErrorCode, Exchange};
 use serde::{Deserialize, Serialize};
 
 // Ledger generic (non app-specific) APDU constants

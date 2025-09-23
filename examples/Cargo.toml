@@ -1,7 +1,8 @@
 [package]
 name = "ledger-examples"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
+publish = false
 
 [[bin]]
 name = "basic_test"
@@ -18,7 +19,7 @@ hex = "0.4"
 serde_json = "1.0"
 
 # Local dependencies
-ledger-transport = { path = "../ledger-transport" }
-ledger-transport-hid = { path = "../ledger-transport-hid" }
-ledger-eth-app = { path = "../ledger-eth-app" }
-ledger-apdu = { path = "../ledger-apdu" }
+ledger-sdk-transport = "0.0.1"
+ledger-sdk-transport-hid = "0.0.1"
+ledger-sdk-eth-app = "0.0.1"
+ledger-sdk-apdu = "0.0.1"

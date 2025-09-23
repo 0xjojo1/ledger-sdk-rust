@@ -351,8 +351,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "ledger-apdu"
-version = "0.1.0"
+name = "ledger-examples"
+version = "0.0.1"
+dependencies = [
+ "env_logger",
+ "hex",
+ "ledger-sdk-apdu 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ledger-sdk-eth-app 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ledger-sdk-transport 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ledger-sdk-transport-hid 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "ledger-sdk-apdu"
+version = "0.0.1"
 dependencies = [
  "arrayref",
  "no-std-compat",
@@ -360,23 +374,46 @@ dependencies = [
 ]
 
 [[package]]
-name = "ledger-device-base"
-version = "0.1.0"
+name = "ledger-sdk-apdu"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23704250e25c365add13940fc7d3cbc1b1bfe716d05e3d760aeb76c2dfe2a532"
+dependencies = [
+ "arrayref",
+ "no-std-compat",
+ "snafu",
+]
+
+[[package]]
+name = "ledger-sdk-device-base"
+version = "0.0.1"
 dependencies = [
  "async-trait",
- "ledger-transport",
+ "ledger-sdk-transport 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "thiserror",
 ]
 
 [[package]]
-name = "ledger-eth-app"
-version = "0.1.0"
+name = "ledger-sdk-device-base"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54ae932c5590a3ab1a92f4ef044bbed39a42e64b99d6f21316e58acb7095d8d4"
+dependencies = [
+ "async-trait",
+ "ledger-sdk-transport 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "ledger-sdk-eth-app"
+version = "0.0.1"
 dependencies = [
  "async-trait",
  "hex",
- "ledger-device-base",
- "ledger-transport",
+ "ledger-sdk-device-base 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ledger-sdk-transport 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-bigint",
  "num-traits",
  "serde",
@@ -385,30 +422,43 @@ dependencies = [
 ]
 
 [[package]]
-name = "ledger-examples"
-version = "0.1.0"
-dependencies = [
- "env_logger",
- "hex",
- "ledger-apdu",
- "ledger-eth-app",
- "ledger-transport",
- "ledger-transport-hid",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "ledger-transport"
-version = "0.1.0"
+name = "ledger-sdk-eth-app"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4e77eb245682eeb280d66ed0298b93c0571a2b9ae208348b0c2f58033164f30a"
 dependencies = [
  "async-trait",
- "ledger-apdu",
+ "hex",
+ "ledger-sdk-device-base 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ledger-sdk-transport 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num-bigint",
+ "num-traits",
+ "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]
-name = "ledger-transport-hid"
-version = "0.1.0"
+name = "ledger-sdk-transport"
+version = "0.0.1"
+dependencies = [
+ "async-trait",
+ "ledger-sdk-apdu 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "ledger-sdk-transport"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c7d99af0a0612eb39bbe8e4c18c16114931ec72f0af98e110376dacd2be17bb"
+dependencies = [
+ "async-trait",
+ "ledger-sdk-apdu 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "ledger-sdk-transport-hid"
+version = "0.0.1"
 dependencies = [
  "byteorder",
  "cfg-if",
@@ -416,11 +466,27 @@ dependencies = [
  "futures",
  "hex",
  "hidapi",
- "ledger-transport",
+ "ledger-sdk-transport 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc",
  "log",
  "once_cell",
  "serial_test",
+ "thiserror",
+]
+
+[[package]]
+name = "ledger-sdk-transport-hid"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "546beb49801d629ea8fe1846cf051ea49997648197894752b28da6e7fb48b447"
+dependencies = [
+ "byteorder",
+ "cfg-if",
+ "hex",
+ "hidapi",
+ "ledger-sdk-transport 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc",
+ "log",
  "thiserror",
 ]
 

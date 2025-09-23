@@ -1,6 +1,6 @@
 [package]
-name = "ledger-apdu"
-version = "0.1.0"
+name = "ledger-sdk-apdu"
+version = "0.0.1"
 edition = "2021"
 license = "Apache-2.0"
 description = "APDU types and helpers for Ledger device communication"

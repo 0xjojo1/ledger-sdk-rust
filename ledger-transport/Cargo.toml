@@ -1,6 +1,6 @@
 [package]
-name = "ledger-transport"
-version = "0.1.0"
+name = "ledger-sdk-transport"
+version = "0.0.1"
 edition = "2021"
 license = "Apache-2.0"
 description = "Transport abstraction layer for Ledger device communication"
@@ -12,4 +12,4 @@ authors = ["0xjojo1 <jojomemo5129@gmail.com>"]
 
 [dependencies]
 async-trait = "0.1.88"
-ledger-apdu = { path = "../ledger-apdu" }
+ledger-sdk-apdu = "0.0.1"

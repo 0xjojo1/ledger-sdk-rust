@@ -6,7 +6,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 pub use errors::LedgerHIDError;
 pub use hidapi;
 use hidapi::{DeviceInfo, HidApi, HidDevice};
-use ledger_transport::{async_trait, APDUAnswer, APDUCommand, Exchange};
+use ledger_sdk_transport::{async_trait, APDUAnswer, APDUCommand, Exchange};
 use log::info;
 
 pub const LEDGER_VENDOR_ID: u16 = 0x2c97;

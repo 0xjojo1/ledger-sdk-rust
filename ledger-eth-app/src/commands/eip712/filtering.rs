@@ -5,8 +5,8 @@
 //! This module contains the EIP-712 filtering APDU command implementation (0x1E).
 
 use async_trait::async_trait;
-use ledger_device_base::{App, AppExt};
-use ledger_transport::{APDUCommand, Exchange};
+use ledger_sdk_device_base::{App, AppExt};
+use ledger_sdk_transport::{APDUCommand, Exchange};
 
 use crate::commands::eip712::encoding::encode_filter_params;
 use crate::errors::{EthAppError, EthAppResult};

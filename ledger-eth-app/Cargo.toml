@@ -1,26 +1,19 @@
 [package]
-name = "ledger-eth-app"
-version = "0.1.0"
+name = "ledger-sdk-eth-app"
+version = "0.0.1"
 edition = "2021"
 license = "Apache-2.0"
 description = "Ledger Ethereum app interaction helpers with EIP-712 support"
 readme = "../README.md"
 repository = "https://github.com/0xjojo1/ledger-sdk-rust"
-keywords = [
-    "ledger",
-    "ethereum",
-    "eip712",
-    "hardware-wallet",
-    "cryptocurrency",
-    "web3",
-]
+keywords = ["ledger", "ethereum", "eip712", "hardware-wallet", "cryptocurrency"]
 categories = ["cryptography", "hardware-support", "web-programming"]
 authors = ["0xjojo1 <jojomemo5129@gmail.com>"]
 
 [dependencies]
 async-trait = "0.1"
-ledger-transport = { path = "../ledger-transport" }
-ledger-device-base = { path = "../ledger-device-base" }
+ledger-sdk-transport = "0.0.1"
+ledger-sdk-device-base = "0.0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0.16"

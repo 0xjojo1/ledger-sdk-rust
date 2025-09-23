@@ -10,8 +10,8 @@
 
 use std::error::Error;
 
-use ledger_eth_app::{BipPath, EthereumApp, GetAddressParams, SignMessageParams};
-use ledger_transport_hid::{hidapi::HidApi, TransportNativeHID};
+use ledger_sdk_eth_app::{BipPath, EthereumApp, GetAddressParams, SignMessageParams};
+use ledger_sdk_transport_hid::{hidapi::HidApi, TransportNativeHID};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {

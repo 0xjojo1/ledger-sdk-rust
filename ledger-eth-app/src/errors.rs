@@ -2,7 +2,7 @@
 
 //! Error types for Ethereum application
 
-use ledger_device_base::LedgerAppError;
+use ledger_sdk_device_base::LedgerAppError;
 use thiserror::Error;
 
 /// Ethereum application specific errors

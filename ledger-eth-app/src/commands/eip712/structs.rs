@@ -5,8 +5,8 @@
 //! This module contains the EIP-712 struct definition and implementation APDU command implementations.
 
 use async_trait::async_trait;
-use ledger_device_base::{App, AppExt};
-use ledger_transport::{APDUCommand, Exchange};
+use ledger_sdk_device_base::{App, AppExt};
+use ledger_sdk_transport::{APDUCommand, Exchange};
 
 use crate::commands::eip712::encoding::{encode_field_definition, APDU_MAX_PAYLOAD};
 use crate::errors::{EthAppError, EthAppResult};

@@ -12,13 +12,13 @@ A modular Rust SDK for communicating with Ledger hardware wallets, featuring com
 
 ## Crates
 
-| Crate                                                                   | Description                        | Version                                                                                                                 |
-| ----------------------------------------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| [`ledger-apdu`](https://crates.io/crates/ledger-apdu)                   | APDU types and helpers             | [![crates.io](https://img.shields.io/crates/v/ledger-apdu.svg)](https://crates.io/crates/ledger-apdu)                   |
-| [`ledger-transport`](https://crates.io/crates/ledger-transport)         | Transport abstraction layer        | [![crates.io](https://img.shields.io/crates/v/ledger-transport.svg)](https://crates.io/crates/ledger-transport)         |
-| [`ledger-transport-hid`](https://crates.io/crates/ledger-transport-hid) | HID transport implementation       | [![crates.io](https://img.shields.io/crates/v/ledger-transport-hid.svg)](https://crates.io/crates/ledger-transport-hid) |
-| [`ledger-device-base`](https://crates.io/crates/ledger-device-base)     | Device and app information helpers | [![crates.io](https://img.shields.io/crates/v/ledger-device-base.svg)](https://crates.io/crates/ledger-device-base)     |
-| [`ledger-eth-app`](https://crates.io/crates/ledger-eth-app)             | Ethereum app with EIP-712 support  | [![crates.io](https://img.shields.io/crates/v/ledger-eth-app.svg)](https://crates.io/crates/ledger-eth-app)             |
+| Crate                                                                           | Description                        | Version                                                                                                                         |
+| ------------------------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| [`ledger-sdk-apdu`](https://crates.io/crates/ledger-sdk-apdu)                   | APDU types and helpers             | [![crates.io](https://img.shields.io/crates/v/ledger-sdk-apdu.svg)](https://crates.io/crates/ledger-sdk-apdu)                   |
+| [`ledger-sdk-transport`](https://crates.io/crates/ledger-sdk-transport)         | Transport abstraction layer        | [![crates.io](https://img.shields.io/crates/v/ledger-sdk-transport.svg)](https://crates.io/crates/ledger-sdk-transport)         |
+| [`ledger-sdk-transport-hid`](https://crates.io/crates/ledger-sdk-transport-hid) | HID transport implementation       | [![crates.io](https://img.shields.io/crates/v/ledger-sdk-transport-hid.svg)](https://crates.io/crates/ledger-sdk-transport-hid) |
+| [`ledger-sdk-device-base`](https://crates.io/crates/ledger-sdk-device-base)     | Device and app information helpers | [![crates.io](https://img.shields.io/crates/v/ledger-sdk-device-base.svg)](https://crates.io/crates/ledger-sdk-device-base)     |
+| [`ledger-sdk-eth-app`](https://crates.io/crates/ledger-sdk-eth-app)             | Ethereum app with EIP-712 support  | [![crates.io](https://img.shields.io/crates/v/ledger-sdk-eth-app.svg)](https://crates.io/crates/ledger-sdk-eth-app)             |
 
 ## Installation
 

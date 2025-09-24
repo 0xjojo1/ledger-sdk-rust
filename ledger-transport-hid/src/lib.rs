@@ -170,14 +170,10 @@ impl TransportNativeHID {
 
         // Serialize once and log APDU hex before sending
         let serialized = command.serialize();
-        println!("[APDU] >> {}", hex::encode(&serialized));
-
         Self::write_apdu(&device, LEDGER_CHANNEL, &serialized)?;
 
         let mut answer = Vec::with_capacity(256);
         Self::read_apdu(&device, LEDGER_CHANNEL, &mut answer)?;
-
-        println!("[APDU] << {}", hex::encode(&answer));
 
         APDUAnswer::from_answer(answer).map_err(|_| LedgerHIDError::Comm("response was too short"))
     }

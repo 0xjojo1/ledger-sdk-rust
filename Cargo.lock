@@ -359,7 +359,7 @@ dependencies = [
  "ledger-sdk-apdu 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ledger-sdk-eth-app 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ledger-sdk-transport 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "ledger-sdk-transport-hid 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ledger-sdk-transport-hid 0.0.1",
  "serde_json",
  "tokio",
 ]
@@ -459,6 +459,22 @@ dependencies = [
 [[package]]
 name = "ledger-sdk-transport-hid"
 version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "546beb49801d629ea8fe1846cf051ea49997648197894752b28da6e7fb48b447"
+dependencies = [
+ "byteorder",
+ "cfg-if",
+ "hex",
+ "hidapi",
+ "ledger-sdk-transport 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc",
+ "log",
+ "thiserror",
+]
+
+[[package]]
+name = "ledger-sdk-transport-hid"
+version = "0.0.2"
 dependencies = [
  "byteorder",
  "cfg-if",
@@ -471,22 +487,6 @@ dependencies = [
  "log",
  "once_cell",
  "serial_test",
- "thiserror",
-]
-
-[[package]]
-name = "ledger-sdk-transport-hid"
-version = "0.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "546beb49801d629ea8fe1846cf051ea49997648197894752b28da6e7fb48b447"
-dependencies = [
- "byteorder",
- "cfg-if",
- "hex",
- "hidapi",
- "ledger-sdk-transport 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc",
- "log",
  "thiserror",
 ]
 
